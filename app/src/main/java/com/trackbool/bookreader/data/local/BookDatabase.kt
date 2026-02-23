@@ -1,11 +1,11 @@
-package com.trackbool.bookreader.data
+package com.trackbool.bookreader.data.local
 
 import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [Book::class], version = 1, exportSchema = false)
+@Database(entities = [BookEntity::class], version = 1, exportSchema = false)
 abstract class BookDatabase : RoomDatabase() {
     abstract fun bookDao(): BookDao
 

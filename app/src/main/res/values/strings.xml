@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">BookReader</string>
+    <string name="my_books">Mis Libros</string>
+    <string name="no_books_yet">No hay libros todavía</string>
+    <string name="book_cover">Portada de %1$s</string>
+    <string name="pages_progress">%1$d/%2$d páginas</string>
+    <string name="book_placeholder">📖</string>
 </resources>

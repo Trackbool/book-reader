@@ -12,12 +12,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import com.trackbool.bookreader.data.Book
+import androidx.compose.ui.res.stringResource
+import com.trackbool.bookreader.R
+import com.trackbool.bookreader.domain.model.Book
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,7 +30,7 @@ fun BookListScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "Mis Libros",
+                        text = stringResource(R.string.my_books),
                         style = MaterialTheme.typography.titleLarge
                     )
                 },
@@ -53,7 +53,7 @@ fun BookListScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "No hay libros todavía",
+                    text = stringResource(R.string.no_books_yet),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

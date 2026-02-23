@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -22,9 +21,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.trackbool.bookreader.data.Book
+import com.trackbool.bookreader.R
+import com.trackbool.bookreader.domain.model.Book
 
 @Composable
 fun BookCard(book: Book, modifier: Modifier = Modifier) {
@@ -50,13 +51,13 @@ fun BookCard(book: Book, modifier: Modifier = Modifier) {
                 if (book.coverUrl.isNotEmpty()) {
                     AsyncImage(
                         model = book.coverUrl,
-                        contentDescription = book.title,
+                        contentDescription = stringResource(R.string.book_cover, book.title),
                         modifier = Modifier.matchParentSize(),
                         contentScale = ContentScale.Crop
                     )
                 } else {
                     Text(
-                        text = "📖",
+                        text = stringResource(R.string.book_placeholder),
                         style = MaterialTheme.typography.headlineMedium
                     )
                 }
@@ -86,7 +87,7 @@ fun BookCard(book: Book, modifier: Modifier = Modifier) {
                     Column {
                         Spacer(modifier = Modifier.height(8.dp))
                         LinearProgressIndicator(
-                            progress = { book.currentPage.toFloat() / book.totalPages },
+                            progress = { book.progress },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(6.dp)
@@ -94,7 +95,7 @@ fun BookCard(book: Book, modifier: Modifier = Modifier) {
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "${book.currentPage}/${book.totalPages} páginas",
+                            text = book.progressText,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

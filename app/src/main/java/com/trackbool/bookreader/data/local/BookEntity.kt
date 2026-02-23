@@ -1,10 +1,10 @@
-package com.trackbool.bookreader.data
+package com.trackbool.bookreader.data.local
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 @Entity(tableName = "books")
-data class Book(
+data class BookEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val title: String,

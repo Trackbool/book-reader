@@ -1,4 +1,4 @@
-package com.trackbool.bookreader.data
+package com.trackbool.bookreader.data.local
 
 import androidx.room.Dao
 import androidx.room.Delete
@@ -11,23 +11,23 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface BookDao {
     @Query("SELECT * FROM books ORDER BY id DESC")
-    fun getAllBooks(): Flow<List<Book>>
+    fun getAllBooks(): Flow<List<BookEntity>>
 
     @Query("SELECT * FROM books WHERE id = :id")
-    suspend fun getBookById(id: Long): Book?
+    suspend fun getBookById(id: Long): BookEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertBook(book: Book): Long
+    suspend fun insertBook(book: BookEntity): Long
 
     @Update
-    suspend fun updateBook(book: Book)
+    suspend fun updateBook(book: BookEntity)
 
     @Delete
-    suspend fun deleteBook(book: Book)
+    suspend fun deleteBook(book: BookEntity)
 
     @Query("SELECT * FROM books WHERE isCompleted = 0 ORDER BY id DESC")
-    fun getBooksInProgress(): Flow<List<Book>>
+    fun getBooksInProgress(): Flow<List<BookEntity>>
 
     @Query("SELECT * FROM books WHERE isCompleted = 1 ORDER BY id DESC")
-    fun getCompletedBooks(): Flow<List<Book>>
+    fun getCompletedBooks(): Flow<List<BookEntity>>
 }
