@@ -8,10 +8,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.ViewModelProvider
 import com.trackbool.bookreader.data.local.BookDatabase
+import com.trackbool.bookreader.data.local.FileManager
 import com.trackbool.bookreader.data.repository.BookRepositoryImpl
 import com.trackbool.bookreader.domain.usecase.AddBookUseCase
 import com.trackbool.bookreader.domain.usecase.DeleteBookUseCase
 import com.trackbool.bookreader.domain.usecase.GetAllBooksUseCase
+import com.trackbool.bookreader.domain.usecase.ImportBookUseCase
 import com.trackbool.bookreader.domain.usecase.UpdateBookProgressUseCase
 import com.trackbool.bookreader.ui.BookListScreen
 import com.trackbool.bookreader.ui.theme.BookReaderTheme
@@ -25,27 +27,35 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // TODO: implement dependency injection
         val database = BookDatabase.getDatabase(applicationContext)
         val repository = BookRepositoryImpl(database.bookDao())
+        val fileManager = FileManager(applicationContext)
 
         val getAllBooksUseCase = GetAllBooksUseCase(repository)
         val addBookUseCase = AddBookUseCase(repository)
         val updateBookProgressUseCase = UpdateBookProgressUseCase(repository)
         val deleteBookUseCase = DeleteBookUseCase(repository)
+        val importBookUseCase = ImportBookUseCase(repository, fileManager)
 
         val factory = BookViewModelFactory(
             getAllBooksUseCase,
             addBookUseCase,
             updateBookProgressUseCase,
-            deleteBookUseCase
+            deleteBookUseCase,
+            importBookUseCase
         )
         bookViewModel = ViewModelProvider(this, factory)[BookViewModel::class.java]
 
         setContent {
             BookReaderTheme {
                 val books by bookViewModel.books.collectAsState()
-                BookListScreen(books = books)
+                val importState by bookViewModel.importState.collectAsState()
+                BookListScreen(
+                    books = books,
+                    viewModel = bookViewModel,
+                    importState = importState,
+                    onResetImportState = { bookViewModel.resetImportState() }
+                )
             }
         }
     }

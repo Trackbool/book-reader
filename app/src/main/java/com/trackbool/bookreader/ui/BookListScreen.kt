@@ -1,5 +1,9 @@
 package com.trackbool.bookreader.ui
 
+import android.net.Uri
+import android.provider.OpenableColumns
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -7,24 +11,66 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.trackbool.bookreader.R
 import com.trackbool.bookreader.domain.model.Book
+import com.trackbool.bookreader.viewmodel.BookViewModel
+import com.trackbool.bookreader.viewmodel.ImportState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookListScreen(
     books: List<Book>,
+    viewModel: BookViewModel,
+    importState: ImportState,
+    onResetImportState: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    val importSuccessMessage = stringResource(R.string.import_success)
+    val untitled = stringResource(R.string.untitled)
+
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri?.let {
+            val fileName = getDisplayName(context, it)
+            val title = fileName?.substringBeforeLast(".") ?: untitled
+            val author = ""
+            viewModel.importBook(context, it, title, author)
+        }
+    }
+
+    LaunchedEffect(importState) {
+        when (importState) {
+            is ImportState.Success -> {
+                snackbarHostState.showSnackbar(importSuccessMessage)
+                onResetImportState()
+            }
+            is ImportState.Error -> {
+                snackbarHostState.showSnackbar(importState.message)
+                onResetImportState()
+            }
+            else -> {}
+        }
+    }
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -43,6 +89,16 @@ fun BookListScreen(
                 )
             )
         },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = {
+                    filePickerLauncher.launch(arrayOf("application/pdf", "application/epub+zip"))
+                }
+            ) {
+                Text("+")
+            }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         modifier = modifier
     ) { paddingValues ->
         if (books.isEmpty()) {
@@ -69,5 +125,20 @@ fun BookListScreen(
                 }
             }
         }
+    }
+}
+
+private fun getDisplayName(context: android.content.Context, uri: Uri): String? {
+    return try {
+        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (cursor.moveToFirst() && nameIndex >= 0) {
+                cursor.getString(nameIndex)
+            } else {
+                null
+            }
+        }
+    } catch (e: Exception) {
+        null
     }
 }

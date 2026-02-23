@@ -13,5 +13,8 @@ data class BookEntity(
     val coverUrl: String = "",
     val currentPage: Int = 0,
     val totalPages: Int = 0,
-    val isCompleted: Boolean = false
+    val isCompleted: Boolean = false,
+    val filePath: String = "",
+    val fileType: String = "NONE",
+    val fileName: String = ""
 )

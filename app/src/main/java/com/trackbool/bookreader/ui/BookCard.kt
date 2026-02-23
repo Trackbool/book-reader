@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.trackbool.bookreader.R
 import com.trackbool.bookreader.domain.model.Book
+import com.trackbool.bookreader.domain.model.BookFileType
 
 @Composable
 fun BookCard(book: Book, modifier: Modifier = Modifier) {
@@ -48,18 +49,27 @@ fun BookCard(book: Book, modifier: Modifier = Modifier) {
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
-                if (book.coverUrl.isNotEmpty()) {
-                    AsyncImage(
-                        model = book.coverUrl,
-                        contentDescription = stringResource(R.string.book_cover, book.title),
-                        modifier = Modifier.matchParentSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Text(
-                        text = stringResource(R.string.book_placeholder),
-                        style = MaterialTheme.typography.headlineMedium
-                    )
+                when {
+                    book.coverUrl.isNotEmpty() -> {
+                        AsyncImage(
+                            model = book.coverUrl,
+                            contentDescription = stringResource(R.string.book_cover, book.title),
+                            modifier = Modifier.matchParentSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                    book.fileType != BookFileType.NONE -> {
+                        Text(
+                            text = book.fileTypeIcon,
+                            style = MaterialTheme.typography.headlineMedium
+                        )
+                    }
+                    else -> {
+                        Text(
+                            text = stringResource(R.string.book_placeholder),
+                            style = MaterialTheme.typography.headlineMedium
+                        )
+                    }
                 }
             }
 
@@ -81,6 +91,14 @@ fun BookCard(book: Book, modifier: Modifier = Modifier) {
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    if (book.fileType != BookFileType.NONE) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = book.fileType.name,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
 
                 if (book.totalPages > 0) {

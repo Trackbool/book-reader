@@ -3,6 +3,7 @@ package com.trackbool.bookreader.data.repository
 import com.trackbool.bookreader.data.local.BookDao
 import com.trackbool.bookreader.data.local.BookEntity
 import com.trackbool.bookreader.domain.model.Book
+import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.repository.BookRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -44,7 +45,10 @@ class BookRepositoryImpl(private val bookDao: BookDao) : BookRepository {
         coverUrl = coverUrl,
         currentPage = currentPage,
         totalPages = totalPages,
-        isCompleted = isCompleted
+        isCompleted = isCompleted,
+        filePath = filePath,
+        fileType = fileType.name,
+        fileName = fileName
     )
 
     private fun BookEntity.toDomain() = Book(
@@ -55,6 +59,9 @@ class BookRepositoryImpl(private val bookDao: BookDao) : BookRepository {
         coverUrl = coverUrl,
         currentPage = currentPage,
         totalPages = totalPages,
-        isCompleted = isCompleted
+        isCompleted = isCompleted,
+        filePath = filePath,
+        fileType = try { BookFileType.valueOf(fileType) } catch (e: Exception) { BookFileType.NONE },
+        fileName = fileName
     )
 }
