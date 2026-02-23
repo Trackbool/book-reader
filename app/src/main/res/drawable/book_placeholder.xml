@@ -1,0 +1,44 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="110dp"
+    android:height="130dp"
+    android:viewportWidth="110"
+    android:viewportHeight="130">
+
+    <!-- Background -->
+    <path
+        android:fillColor="#E8EDF5"
+        android:pathData="M0,0h110v130h-110z"/>
+
+    <!-- Spine -->
+    <path
+        android:fillColor="#C5D0E6"
+        android:pathData="M0,0h10v130h-10z"/>
+
+    <!-- Spine highlight -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M1,0h2v130h-2z"
+        android:alpha="0.6"/>
+
+    <!-- Open book icon - left page (centered in wider canvas) -->
+    <path
+        android:fillColor="#9BAED4"
+        android:pathData="M33,45 L55,52 L55,85 L33,78 Z"/>
+
+    <!-- Open book icon - right page -->
+    <path
+        android:fillColor="#B0BFDB"
+        android:pathData="M55,52 L77,45 L77,78 L55,85 Z"/>
+
+    <!-- Center spine of book icon -->
+    <path
+        android:fillColor="#7A90BB"
+        android:pathData="M54,52h2v33h-2z"/>
+
+    <!-- Page curl hint -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M77,45 L71,45 L71,51 Z"
+        android:alpha="0.4"/>
+
+</vector>
