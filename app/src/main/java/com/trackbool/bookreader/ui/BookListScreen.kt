@@ -1,5 +1,6 @@
 package com.trackbool.bookreader.ui
 
+import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -34,13 +35,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.trackbool.bookreader.R
 import com.trackbool.bookreader.domain.model.Book
-import com.trackbool.bookreader.viewmodel.BookViewModel
 import com.trackbool.bookreader.viewmodel.ImportState
 
 @Composable
 fun BookListScreen(
     books: List<Book>,
-    viewModel: BookViewModel,
+    onImportBook: (Uri, String, String) -> Unit,
     importState: ImportState,
     onResetImportState: () -> Unit,
     modifier: Modifier = Modifier
@@ -58,7 +58,7 @@ fun BookListScreen(
             val fileName = getDisplayName(context, it)
             val title = fileName?.substringBeforeLast(".") ?: untitled
             val author = ""
-            viewModel.importBook(context, it, title, author)
+            onImportBook(it, title, author)
         }
     }
 

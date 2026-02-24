@@ -3,7 +3,6 @@ package com.trackbool.bookreader.viewmodel
 import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.usecase.AddBookUseCase
@@ -11,14 +10,17 @@ import com.trackbool.bookreader.domain.usecase.DeleteBookUseCase
 import com.trackbool.bookreader.domain.usecase.GetAllBooksUseCase
 import com.trackbool.bookreader.domain.usecase.ImportBookUseCase
 import com.trackbool.bookreader.domain.usecase.UpdateBookProgressUseCase
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class BookViewModel(
+@HiltViewModel
+class BookViewModel @Inject constructor(
     private val getAllBooksUseCase: GetAllBooksUseCase,
     private val addBookUseCase: AddBookUseCase,
     private val updateBookProgressUseCase: UpdateBookProgressUseCase,
@@ -38,10 +40,10 @@ class BookViewModel(
         }
     }
 
-    fun importBook(context: Context, uri: Uri, title: String, author: String) {
+    fun importBook(uri: Uri, title: String, author: String) {
         viewModelScope.launch {
             _importState.value = ImportState.Importing
-            val result = importBookUseCase(context, uri, title, author)
+            val result = importBookUseCase(uri, title, author)
             _importState.value = if (result.isSuccess) {
                 ImportState.Success
             } else {
@@ -72,26 +74,4 @@ sealed class ImportState {
     data object Importing : ImportState()
     data object Success : ImportState()
     data class Error(val message: String) : ImportState()
-}
-
-class BookViewModelFactory(
-    private val getAllBooksUseCase: GetAllBooksUseCase,
-    private val addBookUseCase: AddBookUseCase,
-    private val updateBookProgressUseCase: UpdateBookProgressUseCase,
-    private val deleteBookUseCase: DeleteBookUseCase,
-    private val importBookUseCase: ImportBookUseCase
-) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(BookViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return BookViewModel(
-                getAllBooksUseCase,
-                addBookUseCase,
-                updateBookProgressUseCase,
-                deleteBookUseCase,
-                importBookUseCase
-            ) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel class")
-    }
 }
