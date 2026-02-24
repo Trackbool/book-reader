@@ -1,8 +1,8 @@
 package com.trackbool.bookreader.data.local
 
 import android.content.Context
-import android.net.Uri
 import com.trackbool.bookreader.domain.model.BookFileType
+import com.trackbool.bookreader.domain.source.BookSource
 import java.io.File
 import java.io.FileOutputStream
 import java.util.UUID
@@ -15,10 +15,9 @@ class FileManager(private val context: Context) {
         val fileName: String
     )
 
-    fun importBook(uri: Uri): Result<ImportResult> {
+    fun importBook(bookSource: BookSource): Result<ImportResult> {
         return try {
-            val contentResolver = context.contentResolver
-            val fileName = getFileName(uri) ?: "unknown_${UUID.randomUUID()}"
+            val fileName = bookSource.getFileName() ?: "unknown_${UUID.randomUUID()}"
             val extension = getFileExtension(fileName)
             val fileType = getFileType(extension)
 
@@ -32,11 +31,11 @@ class FileManager(private val context: Context) {
 
             val destFile = File(booksDir, newFileName)
 
-            contentResolver.openInputStream(uri)?.use { inputStream ->
+            bookSource.openInputStream().use { inputStream ->
                 FileOutputStream(destFile).use { outputStream ->
                     inputStream.copyTo(outputStream)
                 }
-            } ?: return Result.failure(Exception("No se pudo abrir el archivo"))
+            }
 
             val relativePath = "$BOOKS_DIR/$newFileName"
 
@@ -50,6 +49,10 @@ class FileManager(private val context: Context) {
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    private fun getFileExtension(fileName: String): String {
+        return fileName.substringAfterLast('.', "").lowercase()
     }
 
     fun deleteBookFile(relativePath: String): Result<Unit> {
@@ -66,25 +69,6 @@ class FileManager(private val context: Context) {
 
     fun getBookFile(relativePath: String): File {
         return File(context.filesDir, relativePath)
-    }
-
-    private fun getFileName(uri: Uri): String? {
-        return try {
-            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-                if (cursor.moveToFirst() && nameIndex >= 0) {
-                    cursor.getString(nameIndex)
-                } else {
-                    null
-                }
-            } ?: uri.lastPathSegment
-        } catch (e: Exception) {
-            uri.lastPathSegment
-        }
-    }
-
-    private fun getFileExtension(fileName: String): String {
-        return fileName.substringAfterLast('.', "").lowercase()
     }
 
     private fun getFileType(extension: String): BookFileType {

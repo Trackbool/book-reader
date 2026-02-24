@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.trackbool.bookreader.data.source.AndroidBookSource
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.usecase.AddBookUseCase
 import com.trackbool.bookreader.domain.usecase.DeleteBookUseCase
@@ -11,6 +12,7 @@ import com.trackbool.bookreader.domain.usecase.GetAllBooksUseCase
 import com.trackbool.bookreader.domain.usecase.ImportBookUseCase
 import com.trackbool.bookreader.domain.usecase.UpdateBookProgressUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +23,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class BookViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val getAllBooksUseCase: GetAllBooksUseCase,
     private val addBookUseCase: AddBookUseCase,
     private val updateBookProgressUseCase: UpdateBookProgressUseCase,
@@ -43,7 +46,8 @@ class BookViewModel @Inject constructor(
     fun importBook(uri: Uri, title: String, author: String) {
         viewModelScope.launch {
             _importState.value = ImportState.Importing
-            val result = importBookUseCase(uri, title, author)
+            val bookSource = AndroidBookSource(context, uri)
+            val result = importBookUseCase(bookSource, title, author)
             _importState.value = if (result.isSuccess) {
                 ImportState.Success
             } else {
