@@ -46,20 +46,9 @@ fun BookListScreen(
     supportedMimeTypes: List<String>,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
     val importSuccessMessage = stringResource(R.string.import_success)
-
-    val filePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        uri?.let {
-            val bookSource = AndroidBookSource(context, it)
-            onImportBook(bookSource)
-        }
-    }
-
     ImportStateEffect(
         importState = importState,
         snackbarHostState = snackbarHostState,
@@ -70,11 +59,7 @@ fun BookListScreen(
     Scaffold(
         topBar = { BookListTopBar() },
         floatingActionButton = {
-            BookListFab(
-                onLaunchFilePicker = {
-                    filePickerLauncher.launch(supportedMimeTypes.toTypedArray())
-                }
-            )
+            BookListFab(supportedMimeTypes, onImportBook)
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         modifier = modifier
@@ -108,9 +93,22 @@ private fun BookListTopBar() {
 
 @Composable
 private fun BookListFab(
-    onLaunchFilePicker: () -> Unit
+    supportedMimeTypes: List<String>,
+    onImportBook: (BookSource) -> Unit
 ) {
-    FloatingActionButton(onClick = onLaunchFilePicker) {
+    val context = LocalContext.current
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri?.let {
+            val bookSource = AndroidBookSource(context, it)
+            onImportBook(bookSource)
+        }
+    }
+
+    FloatingActionButton(onClick = {
+        filePickerLauncher.launch(supportedMimeTypes.toTypedArray())
+    }) {
         Text("+")
     }
 }
