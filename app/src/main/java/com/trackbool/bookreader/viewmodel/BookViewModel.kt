@@ -1,12 +1,11 @@
 package com.trackbool.bookreader.viewmodel
 
 import android.content.Context
-import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.trackbool.bookreader.R
-import com.trackbool.bookreader.data.source.AndroidBookSource
 import com.trackbool.bookreader.domain.model.Book
+import com.trackbool.bookreader.domain.source.BookSource
 import com.trackbool.bookreader.domain.usecase.AddBookUseCase
 import com.trackbool.bookreader.domain.usecase.DeleteBookUseCase
 import com.trackbool.bookreader.domain.usecase.GetAllBooksUseCase
@@ -38,10 +37,13 @@ class BookViewModel @Inject constructor(
     private val _importState = MutableStateFlow<ImportState>(ImportState.Idle)
     val importState: StateFlow<ImportState> = _importState.asStateFlow()
 
-    fun importBook(uri: Uri, title: String, author: String) {
+    fun importBook(bookSource: BookSource) {
         viewModelScope.launch {
             _importState.value = ImportState.Importing
-            val bookSource = AndroidBookSource(context, uri)
+            val fileName = bookSource.getFileName()
+            val title = fileName?.substringBeforeLast(".") ?: context.getString(R.string.untitled)
+            val author = ""
+            
             val importResult = importBookUseCase(bookSource, title, author)
             
             if (importResult.isSuccess) {

@@ -1,7 +1,6 @@
 package com.trackbool.bookreader.ui
 
 import android.net.Uri
-import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -33,13 +32,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.trackbool.bookreader.R
+import com.trackbool.bookreader.data.source.AndroidBookSource
 import com.trackbool.bookreader.domain.model.Book
+import com.trackbool.bookreader.domain.source.BookSource
 import com.trackbool.bookreader.viewmodel.ImportState
 
 @Composable
 fun BookListScreen(
     books: List<Book>,
-    onImportBook: (Uri, String, String) -> Unit,
+    onImportBook: (BookSource) -> Unit,
     importState: ImportState,
     onResetImportState: () -> Unit,
     modifier: Modifier = Modifier
@@ -48,16 +49,13 @@ fun BookListScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     val importSuccessMessage = stringResource(R.string.import_success)
-    val untitled = stringResource(R.string.untitled)
 
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         uri?.let {
-            val fileName = getDisplayName(context, it)
-            val title = fileName?.substringBeforeLast(".") ?: untitled
-            val author = ""
-            onImportBook(it, title, author)
+            val bookSource = AndroidBookSource(context, it)
+            onImportBook(bookSource)
         }
     }
 
@@ -188,20 +186,5 @@ private fun BooksGrid(
                     .aspectRatio(0.65f)
             )
         }
-    }
-}
-
-private fun getDisplayName(context: android.content.Context, uri: Uri): String? {
-    return try {
-        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-            if (cursor.moveToFirst() && nameIndex >= 0) {
-                cursor.getString(nameIndex)
-            } else {
-                null
-            }
-        }
-    } catch (e: Exception) {
-        null
     }
 }

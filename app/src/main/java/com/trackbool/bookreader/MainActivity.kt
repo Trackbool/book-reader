@@ -25,8 +25,8 @@ class MainActivity : ComponentActivity() {
                 val importState by viewModel.importState.collectAsState()
                 BookListScreen(
                     books = books,
-                    onImportBook = { uri, title, author ->
-                        viewModel.importBook(uri, title, author)
+                    onImportBook = { bookSource ->
+                        viewModel.importBook(bookSource)
                     },
                     importState = importState,
                     onResetImportState = { viewModel.resetImportState() }
