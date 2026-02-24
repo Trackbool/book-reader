@@ -13,9 +13,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -24,6 +27,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,12 +46,30 @@ import com.trackbool.bookreader.viewmodel.ImportState
 fun BookListScreen(
     books: List<Book>,
     onImportBook: (BookSource) -> Unit,
+    onDeleteBook: (Book) -> Unit,
     importState: ImportState,
     onResetImportState: () -> Unit,
     supportedMimeTypes: List<String>,
     modifier: Modifier = Modifier
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    val selectedBookState: MutableState<Book?> = remember { mutableStateOf(null) }
+
+    if (selectedBookState.value != null) {
+        val optionsTitle = stringResource(R.string.book_options)
+        val deleteLabel = stringResource(R.string.delete_from_library)
+        
+        OptionsDialog(
+            title = optionsTitle,
+            options = listOf(
+                OptionItem(
+                    label = deleteLabel,
+                    onClick = { onDeleteBook(selectedBookState.value!!) }
+                )
+            ),
+            onDismiss = { selectedBookState.value = null }
+        )
+    }
 
     val importSuccessMessage = stringResource(R.string.import_success)
     ImportStateEffect(
@@ -66,7 +89,8 @@ fun BookListScreen(
     ) { paddingValues ->
         BookListContent(
             books = books,
-            paddingValues = paddingValues
+            paddingValues = paddingValues,
+            onBookMoreClick = { selectedBookState.value = it }
         )
     }
 }
@@ -109,7 +133,7 @@ private fun BookListFab(
     FloatingActionButton(onClick = {
         filePickerLauncher.launch(supportedMimeTypes.toTypedArray())
     }) {
-        Text("+")
+        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.import_book))
     }
 }
 
@@ -138,12 +162,13 @@ private fun ImportStateEffect(
 @Composable
 private fun BookListContent(
     books: List<Book>,
-    paddingValues: PaddingValues
+    paddingValues: PaddingValues,
+    onBookMoreClick: (Book) -> Unit
 ) {
     if (books.isEmpty()) {
         EmptyBooksMessage(paddingValues)
     } else {
-        BooksGrid(books, paddingValues)
+        BooksGrid(books, paddingValues, onBookMoreClick)
     }
 }
 
@@ -166,7 +191,8 @@ private fun EmptyBooksMessage(paddingValues: PaddingValues) {
 @Composable
 private fun BooksGrid(
     books: List<Book>,
-    paddingValues: PaddingValues
+    paddingValues: PaddingValues,
+    onBookMoreClick: (Book) -> Unit
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
@@ -180,6 +206,7 @@ private fun BooksGrid(
             BookCard(
                 book = book,
                 onClick = { },
+                onMoreClick = { onBookMoreClick(book) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(0.65f)

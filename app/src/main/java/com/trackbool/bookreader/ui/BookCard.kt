@@ -4,6 +4,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -25,6 +27,7 @@ import com.trackbool.bookreader.ui.theme.BookReaderTheme
 fun BookCard(
     book: Book,
     onClick: () -> Unit,
+    onMoreClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -36,13 +39,24 @@ fun BookCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(8.dp)
         ) {
-            BookCoverImage(
-                coverUrl = book.coverUrl,
-                title = book.title,
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(0.65f)
-            )
+            ) {
+                BookCoverImage(
+                    coverUrl = book.coverUrl,
+                    title = book.title,
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                MoreBookOptionsButton(
+                    onClick = onMoreClick,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(32.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -85,6 +99,21 @@ private fun BookCoverImage(
                 contentScale = ContentScale.Fit
             )
         }
+    }
+}
+
+@Composable
+private fun MoreBookOptionsButton(onClick: () -> Unit,
+                                  modifier: Modifier) {
+    IconButton(
+        onClick = onClick,
+        modifier = modifier
+    ) {
+        Icon(
+            imageVector = Icons.Default.MoreVert,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+        )
     }
 }
 
@@ -149,7 +178,8 @@ private fun BookCardPreview() {
                 currentPage = 0,
                 totalPages = 0
             ),
-            onClick = {}
+            onClick = {},
+            onMoreClick = {}
         )
     }
 }
@@ -169,7 +199,8 @@ private fun BookCardSmallPreview() {
                 currentPage = 0,
                 totalPages = 0
             ),
-            onClick = {}
+            onClick = {},
+            onMoreClick = {}
         )
     }
 }

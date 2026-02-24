@@ -19,4 +19,6 @@
     <string name="add_book">Añadir libro</string>
     <string name="untitled">Sin título</string>
     <string name="book_cover_placeholder">Portada del libro</string>
+    <string name="delete_from_library">Borrar de la biblioteca</string>
+    <string name="book_options">Opciones del libro</string>
 </resources>

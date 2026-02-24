@@ -28,6 +28,9 @@ class MainActivity : ComponentActivity() {
                     onImportBook = { bookSource ->
                         viewModel.importBook(bookSource)
                     },
+                    onDeleteBook = { book ->
+                        viewModel.deleteBook(book)
+                    },
                     importState = importState,
                     onResetImportState = { viewModel.resetImportState() },
                     supportedMimeTypes = viewModel.supportedMimeTypes
