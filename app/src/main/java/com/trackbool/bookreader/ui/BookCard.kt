@@ -2,18 +2,9 @@ package com.trackbool.bookreader.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,79 +13,163 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.trackbool.bookreader.R
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.model.BookFileType
+import com.trackbool.bookreader.ui.theme.BookReaderTheme
 
 @Composable
-fun BookCard(book: Book, modifier: Modifier = Modifier) {
+fun BookCard(
+    book: Book,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(220.dp),
+        onClick = onClick,
+        modifier = modifier,
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
-            modifier = Modifier
-                .padding(8.dp)
-                .fillMaxHeight(),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+            modifier = Modifier.padding(8.dp)
         ) {
-            Box(
+            BookCoverImage(
+                coverUrl = book.coverUrl,
+                title = book.title,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(130.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center
-            ) {
-                when {
-                    book.coverUrl.isNotEmpty() -> {
-                        AsyncImage(
-                            model = book.coverUrl,
-                            contentDescription = stringResource(R.string.book_cover, book.title),
-                            modifier = Modifier.matchParentSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    }
-                    else -> {
-                        Image(
-                            painter = painterResource(R.drawable.book_placeholder),
-                            contentDescription = null,
-                            modifier = Modifier.matchParentSize(),
-                            contentScale = ContentScale.Fit
-                        )
-                    }
-                }
-            }
-
-            Text(
-                text = book.title,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                    .weight(0.65f)
             )
 
-            if (book.author.isNotEmpty()) {
-                Text(
-                    text = book.author,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+            Spacer(modifier = Modifier.height(8.dp))
 
-            if (book.fileType != BookFileType.NONE) {
+            BookInfo(
+                title = book.title,
+                author = book.author,
+                fileType = book.fileType,
+                modifier = Modifier.weight(0.35f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun BookCoverImage(
+    coverUrl: String,
+    title: String,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant),
+        contentAlignment = Alignment.Center
+    ) {
+        if (coverUrl.isNotEmpty()) {
+            AsyncImage(
+                model = coverUrl,
+                contentDescription = stringResource(R.string.book_cover, title),
+                placeholder = painterResource(R.drawable.book_placeholder),
+                error = painterResource(R.drawable.book_placeholder),
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Image(
+                painter = painterResource(R.drawable.book_placeholder),
+                contentDescription = null,
+                modifier = Modifier.matchParentSize(),
+                contentScale = ContentScale.Fit
+            )
+        }
+    }
+}
+
+@Composable
+private fun BookInfo(
+    title: String,
+    author: String,
+    fileType: BookFileType,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyMedium,
+            minLines = 2,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        if (author.isNotEmpty()) {
+            Text(
+                text = author,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        if (fileType != BookFileType.NONE) {
+            Surface(
+                shape = RoundedCornerShape(4.dp),
+                color = MaterialTheme.colorScheme.primaryContainer
+            ) {
                 Text(
-                    text = book.fileType.name,
+                    text = fileType.name,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                 )
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun BookCardPreview() {
+    BookReaderTheme {
+        BookCard(
+            book = Book(
+                id = 1,
+                title = "Clean Architecture",
+                author = "Robert C. Martin",
+                coverUrl = "",
+                fileType = BookFileType.PDF,
+                filePath = "",
+                currentPage = 0,
+                totalPages = 0
+            ),
+            onClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 120)
+@Composable
+private fun BookCardSmallPreview() {
+    BookReaderTheme {
+        BookCard(
+            book = Book(
+                id = 2,
+                title = "Very Long Title That Should Truncate Properly",
+                author = "Author Name",
+                coverUrl = "",
+                fileType = BookFileType.EPUB,
+                filePath = "",
+                currentPage = 0,
+                totalPages = 0
+            ),
+            onClick = {}
+        )
     }
 }

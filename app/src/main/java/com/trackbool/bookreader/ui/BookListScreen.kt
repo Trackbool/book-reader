@@ -6,7 +6,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -127,7 +130,11 @@ fun BookListScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(books, key = { it.id }) { book ->
-                    BookCard(book = book)
+                    BookCard(book = book,
+                        onClick = { },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(0.65f))
                 }
             }
         }
