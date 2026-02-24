@@ -43,6 +43,7 @@ fun BookListScreen(
     onImportBook: (BookSource) -> Unit,
     importState: ImportState,
     onResetImportState: () -> Unit,
+    supportedMimeTypes: List<String>,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -71,7 +72,7 @@ fun BookListScreen(
         floatingActionButton = {
             BookListFab(
                 onLaunchFilePicker = {
-                    filePickerLauncher.launch(arrayOf("application/pdf", "application/epub+zip"))
+                    filePickerLauncher.launch(supportedMimeTypes.toTypedArray())
                 }
             )
         },

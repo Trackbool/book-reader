@@ -37,6 +37,8 @@ class BookViewModel @Inject constructor(
     private val _importState = MutableStateFlow<ImportState>(ImportState.Idle)
     val importState: StateFlow<ImportState> = _importState.asStateFlow()
 
+    val supportedMimeTypes: List<String> = listOf("application/pdf", "application/epub+zip")
+
     fun importBook(bookSource: BookSource) {
         viewModelScope.launch {
             _importState.value = ImportState.Importing

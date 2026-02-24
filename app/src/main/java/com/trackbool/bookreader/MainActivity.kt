@@ -29,7 +29,8 @@ class MainActivity : ComponentActivity() {
                         viewModel.importBook(bookSource)
                     },
                     importState = importState,
-                    onResetImportState = { viewModel.resetImportState() }
+                    onResetImportState = { viewModel.resetImportState() },
+                    supportedMimeTypes = viewModel.supportedMimeTypes
                 )
             }
         }
