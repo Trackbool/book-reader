@@ -23,7 +23,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class BookViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val getAllBooksUseCase: GetAllBooksUseCase,
     private val addBookUseCase: AddBookUseCase,
     private val updateBookProgressUseCase: UpdateBookProgressUseCase,
