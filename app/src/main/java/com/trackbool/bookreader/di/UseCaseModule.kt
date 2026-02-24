@@ -54,10 +54,9 @@ object UseCaseModule {
     @Provides
     @ViewModelScoped
     fun provideImportBookUseCase(
-        repository: BookRepository,
         fileManager: FileManager
     ): ImportBookUseCase {
-        return ImportBookUseCase(repository, fileManager)
+        return ImportBookUseCase(fileManager)
     }
 
     @Provides

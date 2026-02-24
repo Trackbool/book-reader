@@ -25,10 +25,10 @@ import javax.inject.Inject
 class BookViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val getAllBooksUseCase: GetAllBooksUseCase,
+    private val importBookUseCase: ImportBookUseCase,
     private val addBookUseCase: AddBookUseCase,
     private val updateBookProgressUseCase: UpdateBookProgressUseCase,
     private val deleteBookUseCase: DeleteBookUseCase,
-    private val importBookUseCase: ImportBookUseCase
 ) : ViewModel() {
 
     val books: StateFlow<List<Book>> = getAllBooksUseCase()
@@ -37,21 +37,18 @@ class BookViewModel @Inject constructor(
     private val _importState = MutableStateFlow<ImportState>(ImportState.Idle)
     val importState: StateFlow<ImportState> = _importState.asStateFlow()
 
-    fun addBook(title: String, author: String, totalPages: Int) {
-        viewModelScope.launch {
-            addBookUseCase(title, author, totalPages)
-        }
-    }
-
     fun importBook(uri: Uri, title: String, author: String) {
         viewModelScope.launch {
             _importState.value = ImportState.Importing
             val bookSource = AndroidBookSource(context, uri)
-            val result = importBookUseCase(bookSource, title, author)
-            _importState.value = if (result.isSuccess) {
-                ImportState.Success
+            val importResult = importBookUseCase(bookSource, title, author)
+            
+            if (importResult.isSuccess) {
+                val book = importResult.getOrThrow()
+                addBookUseCase(book)
+                _importState.value = ImportState.Success
             } else {
-                ImportState.Error(result.exceptionOrNull()?.message ?: "Error desconocido")
+                _importState.value = ImportState.Error(importResult.exceptionOrNull()?.message ?: "Error desconocido")
             }
         }
     }
