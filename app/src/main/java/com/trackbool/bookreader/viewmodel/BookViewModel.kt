@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.trackbool.bookreader.R
 import com.trackbool.bookreader.data.source.AndroidBookSource
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.usecase.AddBookUseCase
@@ -45,10 +46,16 @@ class BookViewModel @Inject constructor(
             
             if (importResult.isSuccess) {
                 val book = importResult.getOrThrow()
-                addBookUseCase(book)
-                _importState.value = ImportState.Success
+                val addResult = addBookUseCase(book)
+                _importState.value = if (addResult.isSuccess) {
+                    ImportState.Success
+                } else {
+                    ImportState.Error(
+                        addResult.exceptionOrNull()?.message ?: context.getString(R.string.error_save_book))
+                }
             } else {
-                _importState.value = ImportState.Error(importResult.exceptionOrNull()?.message ?: "Error desconocido")
+                _importState.value = ImportState.Error(
+                    importResult.exceptionOrNull()?.message ?: context.getString(R.string.error_import_book))
             }
         }
     }

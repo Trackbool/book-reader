@@ -14,6 +14,8 @@
     <string name="cancel">Cancelar</string>
     <string name="import_success">Libro importado correctamente</string>
     <string name="import_error">Error al importar: %1$s</string>
+    <string name="error_import_book">Error al importar el libro</string>
+    <string name="error_save_book">Error al guardar libro en la biblioteca</string>
     <string name="add_book">Añadir libro</string>
     <string name="untitled">Sin título</string>
     <string name="book_cover_placeholder">Portada del libro</string>
