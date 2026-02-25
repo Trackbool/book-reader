@@ -77,10 +77,12 @@ fun BookListScreen(
     }
 
     val importSuccessMessage = stringResource(R.string.import_success)
+    val importSuccessMessagePlural = stringResource(R.string.import_success_plural)
     ImportStateEffect(
         importState = importState,
         snackbarHostState = snackbarHostState,
         importSuccessMessage = importSuccessMessage,
+        importSuccessMessagePlural = importSuccessMessagePlural,
         onResetImportState = onResetImportState
     )
 
@@ -150,13 +152,14 @@ private fun ImportStateEffect(
     importState: ImportState,
     snackbarHostState: SnackbarHostState,
     importSuccessMessage: String,
+    importSuccessMessagePlural: String,
     onResetImportState: () -> Unit
 ) {
     LaunchedEffect(importState) {
         when (importState) {
             is ImportState.Success -> {
                 val message = if (importState.count > 1) {
-                    "$importSuccessMessage (${importState.count})"
+                    String.format(importSuccessMessagePlural, importState.count)
                 } else {
                     importSuccessMessage
                 }
