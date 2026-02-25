@@ -1,4 +1,4 @@
-package com.trackbool.bookreader.ui
+package com.trackbool.bookreader.ui.screens
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -40,6 +40,9 @@ import com.trackbool.bookreader.R
 import com.trackbool.bookreader.data.source.AndroidBookSource
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.source.BookSource
+import com.trackbool.bookreader.ui.components.BookCard
+import com.trackbool.bookreader.ui.components.OptionItem
+import com.trackbool.bookreader.ui.components.OptionsDialog
 import com.trackbool.bookreader.viewmodel.ImportState
 
 @Composable
@@ -58,7 +61,7 @@ fun BookListScreen(
     if (selectedBookState.value != null) {
         val optionsTitle = stringResource(R.string.book_options)
         val deleteLabel = stringResource(R.string.delete_from_library)
-        
+
         OptionsDialog(
             title = optionsTitle,
             options = listOf(

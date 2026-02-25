@@ -1,4 +1,4 @@
-package com.trackbool.bookreader.ui
+package com.trackbool.bookreader.ui.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
