@@ -25,17 +25,38 @@ class BookRepositoryImpl(private val bookDao: BookDao) : BookRepository {
             entities.map { it.toDomain() }
         }
 
-    override suspend fun getBookById(id: Long): Book? =
-        bookDao.getBookById(id)?.toDomain()
+    override suspend fun getBookById(id: Long): Result<Book> =
+        try {
+            bookDao.getBookById(id)?.toDomain()?.let {
+                Result.success(it)
+            } ?: Result.failure(NoSuchElementException("Book not found with id: $id"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
 
-    override suspend fun insertBook(book: Book): Long =
-        bookDao.insertBook(book.toEntity())
+    override suspend fun insertBook(book: Book): Result<Book> =
+        try {
+            val id = bookDao.insertBook(book.toEntity())
+            Result.success(book.copy(id = id))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
 
-    override suspend fun updateBook(book: Book) =
-        bookDao.updateBook(book.toEntity())
+    override suspend fun updateBook(book: Book): Result<Book> =
+        try {
+            bookDao.updateBook(book.toEntity())
+            Result.success(book)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
 
-    override suspend fun deleteBook(book: Book) =
-        bookDao.deleteBook(book.toEntity())
+    override suspend fun deleteBook(book: Book): Result<Book> =
+        try {
+            bookDao.deleteBook(book.toEntity())
+            Result.success(book)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
 
     private fun Book.toEntity() = BookEntity(
         id = id,
