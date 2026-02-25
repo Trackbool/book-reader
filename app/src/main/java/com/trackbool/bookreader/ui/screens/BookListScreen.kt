@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import com.trackbool.bookreader.R
 import com.trackbool.bookreader.data.source.AndroidBookSource
 import com.trackbool.bookreader.domain.model.Book
@@ -50,6 +51,7 @@ fun BookListScreen(
     books: List<Book>,
     onImportBook: (BookSource) -> Unit,
     onDeleteBook: (Book) -> Unit,
+    onBookClick: (Book) -> Unit,
     importState: ImportState,
     onResetImportState: () -> Unit,
     supportedMimeTypes: List<String>,
@@ -93,7 +95,8 @@ fun BookListScreen(
         BookListContent(
             books = books,
             paddingValues = paddingValues,
-            onBookMoreClick = { selectedBookState.value = it }
+            onBookMoreClick = { selectedBookState.value = it },
+            onBookClick = onBookClick
         )
     }
 }
@@ -166,12 +169,13 @@ private fun ImportStateEffect(
 private fun BookListContent(
     books: List<Book>,
     paddingValues: PaddingValues,
-    onBookMoreClick: (Book) -> Unit
+    onBookMoreClick: (Book) -> Unit,
+    onBookClick: (Book) -> Unit
 ) {
     if (books.isEmpty()) {
         EmptyBooksMessage(paddingValues)
     } else {
-        BooksGrid(books, paddingValues, onBookMoreClick)
+        BooksGrid(books, paddingValues, onBookMoreClick, onBookClick)
     }
 }
 
@@ -195,7 +199,8 @@ private fun EmptyBooksMessage(paddingValues: PaddingValues) {
 private fun BooksGrid(
     books: List<Book>,
     paddingValues: PaddingValues,
-    onBookMoreClick: (Book) -> Unit
+    onBookMoreClick: (Book) -> Unit,
+    onBookClick: (Book) -> Unit
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
@@ -208,7 +213,7 @@ private fun BooksGrid(
         items(books, key = { it.id }) { book ->
             BookCard(
                 book = book,
-                onClick = { },
+                onClick = { onBookClick(book) },
                 onMoreClick = { onBookMoreClick(book) },
                 modifier = Modifier
                     .fillMaxWidth()
