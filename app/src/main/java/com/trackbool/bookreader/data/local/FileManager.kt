@@ -51,6 +51,17 @@ class FileManager(private val context: Context) {
         }
     }
 
+    fun importBooks(bookSources: List<BookSource>): Result<List<ImportResult>> {
+        return try {
+            val results = bookSources.mapNotNull { bookSource ->
+                importBook(bookSource).getOrNull()
+            }
+            Result.success(results)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     private fun getFileExtension(fileName: String): String {
         return fileName.substringAfterLast('.', "").lowercase()
     }

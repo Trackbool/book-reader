@@ -34,10 +34,14 @@ class BookRepositoryImpl(private val bookDao: BookDao) : BookRepository {
             Result.failure(e)
         }
 
-    override suspend fun insertBook(book: Book): Result<Book> =
+    override suspend fun insertBooks(books: List<Book>): Result<List<Book>> =
         try {
-            val id = bookDao.insertBook(book.toEntity())
-            Result.success(book.copy(id = id))
+            val entities = books.map { it.toEntity() }
+            val ids = bookDao.insertBooks(entities)
+            val booksWithIds = books.mapIndexed { index, book ->
+                book.copy(id = ids[index])
+            }
+            Result.success(booksWithIds)
         } catch (e: Exception) {
             Result.failure(e)
         }

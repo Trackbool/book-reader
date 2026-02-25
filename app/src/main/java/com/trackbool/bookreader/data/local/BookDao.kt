@@ -17,7 +17,7 @@ interface BookDao {
     suspend fun getBookById(id: Long): BookEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertBook(book: BookEntity): Long
+    suspend fun insertBooks(books: List<BookEntity>): List<Long>
 
     @Update
     suspend fun updateBook(book: BookEntity)

@@ -29,7 +29,7 @@ fun AppNavGraph(
 
             BookListScreen(
                 books = books,
-                onImportBook = viewModel::importBook,
+                onImportBooks = viewModel::importBooks,
                 onDeleteBook = viewModel::deleteBook,
                 onBookClick = { book ->
                     navController.navigate(

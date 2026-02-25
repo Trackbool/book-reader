@@ -49,7 +49,7 @@ import com.trackbool.bookreader.viewmodel.ImportState
 @Composable
 fun BookListScreen(
     books: List<Book>,
-    onImportBook: (BookSource) -> Unit,
+    onImportBooks: (List<BookSource>) -> Unit,
     onDeleteBook: (Book) -> Unit,
     onBookClick: (Book) -> Unit,
     importState: ImportState,
@@ -87,7 +87,7 @@ fun BookListScreen(
     Scaffold(
         topBar = { BookListTopBar() },
         floatingActionButton = {
-            BookListFab(supportedMimeTypes, onImportBook)
+            BookListFab(supportedMimeTypes, onImportBooks)
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         modifier = modifier
@@ -124,15 +124,17 @@ private fun BookListTopBar() {
 @Composable
 private fun BookListFab(
     supportedMimeTypes: List<String>,
-    onImportBook: (BookSource) -> Unit
+    onImportBooks: (List<BookSource>) -> Unit
 ) {
     val context = LocalContext.current
     val filePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        uri?.let {
-            val bookSource = AndroidBookSource(context, it)
-            onImportBook(bookSource)
+        contract = ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            val bookSources = uris.map { uri ->
+                AndroidBookSource(context, uri)
+            }
+            onImportBooks(bookSources)
         }
     }
 
@@ -153,7 +155,12 @@ private fun ImportStateEffect(
     LaunchedEffect(importState) {
         when (importState) {
             is ImportState.Success -> {
-                snackbarHostState.showSnackbar(importSuccessMessage)
+                val message = if (importState.count > 1) {
+                    "$importSuccessMessage (${importState.count})"
+                } else {
+                    importSuccessMessage
+                }
+                snackbarHostState.showSnackbar(message)
                 onResetImportState()
             }
             is ImportState.Error -> {

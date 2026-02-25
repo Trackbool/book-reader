@@ -2,12 +2,12 @@ package com.trackbool.bookreader.di
 
 import com.trackbool.bookreader.data.local.FileManager
 import com.trackbool.bookreader.domain.repository.BookRepository
-import com.trackbool.bookreader.domain.usecase.AddBookUseCase
+import com.trackbool.bookreader.domain.usecase.AddBooksUseCase
 import com.trackbool.bookreader.domain.usecase.DeleteBookUseCase
 import com.trackbool.bookreader.domain.usecase.GetAllBooksUseCase
 import com.trackbool.bookreader.domain.usecase.GetBooksInProgressUseCase
 import com.trackbool.bookreader.domain.usecase.GetCompletedBooksUseCase
-import com.trackbool.bookreader.domain.usecase.ImportBookUseCase
+import com.trackbool.bookreader.domain.usecase.ImportBooksUseCase
 import com.trackbool.bookreader.domain.usecase.UpdateBookProgressUseCase
 import dagger.Module
 import dagger.Provides
@@ -29,10 +29,10 @@ object UseCaseModule {
 
     @Provides
     @ViewModelScoped
-    fun provideAddBookUseCase(
+    fun provideAddBooksUseCase(
         repository: BookRepository
-    ): AddBookUseCase {
-        return AddBookUseCase(repository)
+    ): AddBooksUseCase {
+        return AddBooksUseCase(repository)
     }
 
     @Provides
@@ -53,10 +53,10 @@ object UseCaseModule {
 
     @Provides
     @ViewModelScoped
-    fun provideImportBookUseCase(
+    fun provideImportBooksUseCase(
         fileManager: FileManager
-    ): ImportBookUseCase {
-        return ImportBookUseCase(fileManager)
+    ): ImportBooksUseCase {
+        return ImportBooksUseCase(fileManager)
     }
 
     @Provides

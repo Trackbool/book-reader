@@ -6,10 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.trackbool.bookreader.R
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.source.BookSource
-import com.trackbool.bookreader.domain.usecase.AddBookUseCase
+import com.trackbool.bookreader.domain.usecase.AddBooksUseCase
 import com.trackbool.bookreader.domain.usecase.DeleteBookUseCase
 import com.trackbool.bookreader.domain.usecase.GetAllBooksUseCase
-import com.trackbool.bookreader.domain.usecase.ImportBookUseCase
+import com.trackbool.bookreader.domain.usecase.ImportBooksUseCase
 import com.trackbool.bookreader.domain.usecase.UpdateBookProgressUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -25,8 +25,8 @@ import javax.inject.Inject
 class BookViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val getAllBooksUseCase: GetAllBooksUseCase,
-    private val importBookUseCase: ImportBookUseCase,
-    private val addBookUseCase: AddBookUseCase,
+    private val importBooksUseCase: ImportBooksUseCase,
+    private val addBooksUseCase: AddBooksUseCase,
     private val updateBookProgressUseCase: UpdateBookProgressUseCase,
     private val deleteBookUseCase: DeleteBookUseCase,
 ) : ViewModel() {
@@ -39,33 +39,40 @@ class BookViewModel @Inject constructor(
 
     val supportedMimeTypes: List<String> = listOf("application/pdf", "application/epub+zip")
 
-    fun importBook(bookSource: BookSource) {
+    fun resetImportState() {
+        _importState.value = ImportState.Idle
+    }
+
+    fun importBooks(bookSources: List<BookSource>) {
         viewModelScope.launch {
             _importState.value = ImportState.Importing
-            val fileName = bookSource.getFileName()
-            val title = fileName?.substringBeforeLast(".") ?: context.getString(R.string.untitled)
-            val author = ""
-            
-            val importResult = importBookUseCase(bookSource, title, author)
-            
+
+            val titles = bookSources.map { bookSource ->
+                bookSource.getFileName()?.substringBeforeLast(".")
+                    ?: context.getString(R.string.untitled)
+            }
+            val authors = List(bookSources.size) { "" }
+
+            val importResult = importBooksUseCase(bookSources, titles, authors)
+
             if (importResult.isSuccess) {
-                val book = importResult.getOrThrow()
-                val addResult = addBookUseCase(book)
+                val books = importResult.getOrThrow()
+                val addResult = addBooksUseCase(books)
                 _importState.value = if (addResult.isSuccess) {
-                    ImportState.Success
+                    ImportState.Success(books.size)
                 } else {
                     ImportState.Error(
-                        addResult.exceptionOrNull()?.message ?: context.getString(R.string.error_save_book))
+                        addResult.exceptionOrNull()?.message
+                            ?: context.getString(R.string.error_save_book)
+                    )
                 }
             } else {
                 _importState.value = ImportState.Error(
-                    importResult.exceptionOrNull()?.message ?: context.getString(R.string.error_import_book))
+                    importResult.exceptionOrNull()?.message
+                        ?: context.getString(R.string.error_import_book)
+                )
             }
         }
-    }
-
-    fun resetImportState() {
-        _importState.value = ImportState.Idle
     }
 
     fun updateProgress(book: Book, currentPage: Int) {
@@ -84,6 +91,6 @@ class BookViewModel @Inject constructor(
 sealed class ImportState {
     data object Idle : ImportState()
     data object Importing : ImportState()
-    data object Success : ImportState()
+    data class Success(val count: Int) : ImportState()
     data class Error(val message: String) : ImportState()
 }

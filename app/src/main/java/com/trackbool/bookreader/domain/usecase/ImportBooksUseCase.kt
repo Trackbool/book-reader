@@ -4,27 +4,27 @@ import com.trackbool.bookreader.data.local.FileManager
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.source.BookSource
 
-class ImportBookUseCase(
-    private val fileManager: FileManager
-) {
+class ImportBooksUseCase(private val fileManager: FileManager) {
     suspend operator fun invoke(
-        bookSource: BookSource,
-        title: String,
-        author: String
-    ): Result<Book> {
+        bookSources: List<BookSource>,
+        titles: List<String>,
+        authors: List<String>
+    ): Result<List<Book>> {
         return try {
-            val importResult = fileManager.importBook(bookSource)
+            val importResults = fileManager.importBooks(bookSources)
                 .getOrElse { return Result.failure(it) }
 
-            Result.success(
+            val books = importResults.mapIndexed { index, importResult ->
                 Book(
-                    title = title,
-                    author = author,
+                    title = titles.getOrElse(index) { importResult.fileName },
+                    author = authors.getOrElse(index) { "" },
                     filePath = importResult.filePath,
                     fileType = importResult.fileType,
                     fileName = importResult.fileName
                 )
-            )
+            }
+
+            Result.success(books)
         } catch (e: Exception) {
             Result.failure(e)
         }
