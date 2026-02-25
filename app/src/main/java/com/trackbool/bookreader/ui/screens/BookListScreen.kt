@@ -69,7 +69,7 @@ fun BookListScreen(
             options = listOf(
                 OptionItem(
                     label = deleteLabel,
-                    onClick = { onDeleteBook(selectedBookState.value!!) }
+                    onClick = { selectedBookState.value?.let { onDeleteBook(it) } }
                 )
             ),
             onDismiss = { selectedBookState.value = null }
