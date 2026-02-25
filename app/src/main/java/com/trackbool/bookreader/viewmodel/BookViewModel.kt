@@ -7,7 +7,7 @@ import com.trackbool.bookreader.R
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.source.BookSource
 import com.trackbool.bookreader.domain.usecase.AddBooksUseCase
-import com.trackbool.bookreader.domain.usecase.DeleteBookUseCase
+import com.trackbool.bookreader.domain.usecase.DeleteBooksUseCase
 import com.trackbool.bookreader.domain.usecase.GetAllBooksUseCase
 import com.trackbool.bookreader.domain.usecase.ImportBooksUseCase
 import com.trackbool.bookreader.domain.usecase.UpdateBookProgressUseCase
@@ -28,7 +28,7 @@ class BookViewModel @Inject constructor(
     private val importBooksUseCase: ImportBooksUseCase,
     private val addBooksUseCase: AddBooksUseCase,
     private val updateBookProgressUseCase: UpdateBookProgressUseCase,
-    private val deleteBookUseCase: DeleteBookUseCase,
+    private val deleteBooksUseCase: DeleteBooksUseCase,
 ) : ViewModel() {
 
     val books: StateFlow<List<Book>> = getAllBooksUseCase()
@@ -81,9 +81,9 @@ class BookViewModel @Inject constructor(
         }
     }
 
-    fun deleteBook(book: Book) {
+    fun deleteBooks(book: Book) {
         viewModelScope.launch {
-            deleteBookUseCase(book)
+            deleteBooksUseCase(listOf(book))
         }
     }
 }

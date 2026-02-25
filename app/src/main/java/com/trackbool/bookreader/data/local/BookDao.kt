@@ -23,7 +23,7 @@ interface BookDao {
     suspend fun updateBook(book: BookEntity)
 
     @Delete
-    suspend fun deleteBook(book: BookEntity)
+    suspend fun deleteBooks(books: List<BookEntity>)
 
     @Query("SELECT * FROM books WHERE isCompleted = 0 ORDER BY id DESC")
     fun getBooksInProgress(): Flow<List<BookEntity>>

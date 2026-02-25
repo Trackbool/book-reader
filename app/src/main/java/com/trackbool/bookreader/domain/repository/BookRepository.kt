@@ -10,5 +10,5 @@ interface BookRepository {
     suspend fun getBookById(id: Long): Result<Book>
     suspend fun insertBooks(books: List<Book>): Result<List<Book>>
     suspend fun updateBook(book: Book): Result<Book>
-    suspend fun deleteBook(book: Book): Result<Book>
+    suspend fun deleteBooks(books: List<Book>): Result<List<Book>>
 }

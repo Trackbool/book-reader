@@ -3,7 +3,7 @@ package com.trackbool.bookreader.di
 import com.trackbool.bookreader.data.local.FileManager
 import com.trackbool.bookreader.domain.repository.BookRepository
 import com.trackbool.bookreader.domain.usecase.AddBooksUseCase
-import com.trackbool.bookreader.domain.usecase.DeleteBookUseCase
+import com.trackbool.bookreader.domain.usecase.DeleteBooksUseCase
 import com.trackbool.bookreader.domain.usecase.GetAllBooksUseCase
 import com.trackbool.bookreader.domain.usecase.GetBooksInProgressUseCase
 import com.trackbool.bookreader.domain.usecase.GetCompletedBooksUseCase
@@ -45,10 +45,10 @@ object UseCaseModule {
 
     @Provides
     @ViewModelScoped
-    fun provideDeleteBookUseCase(
+    fun provideDeleteBooksUseCase(
         repository: BookRepository
-    ): DeleteBookUseCase {
-        return DeleteBookUseCase(repository)
+    ): DeleteBooksUseCase {
+        return DeleteBooksUseCase(repository)
     }
 
     @Provides

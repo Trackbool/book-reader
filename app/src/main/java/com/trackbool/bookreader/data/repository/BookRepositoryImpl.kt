@@ -54,10 +54,11 @@ class BookRepositoryImpl(private val bookDao: BookDao) : BookRepository {
             Result.failure(e)
         }
 
-    override suspend fun deleteBook(book: Book): Result<Book> =
+    override suspend fun deleteBooks(books: List<Book>): Result<List<Book>> =
         try {
-            bookDao.deleteBook(book.toEntity())
-            Result.success(book)
+            val entities = books.map { it.toEntity() }
+            bookDao.deleteBooks(entities)
+            Result.success(books)
         } catch (e: Exception) {
             Result.failure(e)
         }
