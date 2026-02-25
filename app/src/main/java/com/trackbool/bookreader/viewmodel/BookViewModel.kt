@@ -81,9 +81,9 @@ class BookViewModel @Inject constructor(
         }
     }
 
-    fun deleteBooks(book: Book) {
+    fun deleteBooks(books: List<Book>) {
         viewModelScope.launch {
-            deleteBooksUseCase(listOf(book))
+            deleteBooksUseCase(books)
         }
     }
 }

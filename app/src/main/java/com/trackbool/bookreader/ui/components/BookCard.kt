@@ -1,10 +1,14 @@
 package com.trackbool.bookreader.ui.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -28,43 +32,104 @@ fun BookCard(
     book: Book,
     onClick: () -> Unit,
     onMoreClick: () -> Unit,
+    onLongClick: () -> Unit,
+    isSelected: Boolean,
+    isSelectionMode: Boolean,
     modifier: Modifier = Modifier
 ) {
     Card(
-        onClick = onClick,
-        modifier = modifier,
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        modifier = modifier
+            .combinedClickable(
+                onClick = {
+                    if (isSelectionMode) {
+                        onLongClick()
+                    } else {
+                        onClick()
+                    }
+                },
+                onLongClick = onLongClick
+            ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = if (isSelected) {
+            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+        } else {
+            CardDefaults.cardColors()
+        }
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(8.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(0.65f)
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(8.dp)
             ) {
-                BookCoverImage(
-                    coverUrl = book.coverUrl,
-                    title = book.title,
-                    modifier = Modifier.fillMaxSize()
-                )
-
-                MoreBookOptionsButton(
-                    onClick = onMoreClick,
+                Box(
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .size(32.dp)
+                        .fillMaxWidth()
+                        .weight(0.65f)
+                ) {
+                    BookCoverImage(
+                        coverUrl = book.coverUrl,
+                        title = book.title,
+                        modifier = Modifier.fillMaxSize()
+                    )
+
+                    if (!isSelectionMode) {
+                        MoreBookOptionsButton(
+                            onClick = onMoreClick,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .size(32.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                BookInfo(
+                    title = book.title,
+                    author = book.author,
+                    fileType = book.fileType,
+                    modifier = Modifier.weight(0.35f)
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            if (isSelectionMode) {
+                SelectionIndicator(
+                    isSelected = isSelected,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(4.dp)
+                        .size(24.dp)
+                )
+            }
+        }
+    }
+}
 
-            BookInfo(
-                title = book.title,
-                author = book.author,
-                fileType = book.fileType,
-                modifier = Modifier.weight(0.35f)
+@Composable
+private fun SelectionIndicator(
+    isSelected: Boolean,
+    modifier: Modifier = Modifier
+) {
+    if (isSelected) {
+        Icon(
+            imageVector = Icons.Default.CheckCircle,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = modifier
+        )
+    } else {
+        Box(
+            modifier = modifier
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(20.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             )
         }
     }
@@ -179,7 +244,10 @@ private fun BookCardPreview() {
                 totalPages = 0
             ),
             onClick = {},
-            onMoreClick = {}
+            onMoreClick = {},
+            onLongClick = {},
+            isSelected = false,
+            isSelectionMode = false
         )
     }
 }
@@ -200,7 +268,10 @@ private fun BookCardSmallPreview() {
                 totalPages = 0
             ),
             onClick = {},
-            onMoreClick = {}
+            onMoreClick = {},
+            onLongClick = {},
+            isSelected = false,
+            isSelectionMode = false
         )
     }
 }

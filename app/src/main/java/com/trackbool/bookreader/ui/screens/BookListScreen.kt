@@ -15,28 +15,34 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
 import com.trackbool.bookreader.R
 import com.trackbool.bookreader.data.source.AndroidBookSource
 import com.trackbool.bookreader.domain.model.Book
@@ -50,7 +56,7 @@ import com.trackbool.bookreader.viewmodel.ImportState
 fun BookListScreen(
     books: List<Book>,
     onImportBooks: (List<BookSource>) -> Unit,
-    onDeleteBook: (Book) -> Unit,
+    onDeleteBooks: (List<Book>) -> Unit,
     onBookClick: (Book) -> Unit,
     importState: ImportState,
     onResetImportState: () -> Unit,
@@ -60,7 +66,22 @@ fun BookListScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val selectedBookState: MutableState<Book?> = remember { mutableStateOf(null) }
 
-    if (selectedBookState.value != null) {
+    var isSelectionMode by remember { mutableStateOf(false) }
+    var selectedBooks by remember { mutableStateOf(setOf<Book>()) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    fun toggleBookSelection(book: Book) {
+        selectedBooks = if (selectedBooks.contains(book)) {
+            selectedBooks - book
+        } else {
+            selectedBooks + book
+        }
+        if (selectedBooks.isEmpty()) {
+            isSelectionMode = false
+        }
+    }
+
+    if (selectedBookState.value != null && !isSelectionMode) {
         val optionsTitle = stringResource(R.string.book_options)
         val deleteLabel = stringResource(R.string.delete_from_library)
 
@@ -69,10 +90,25 @@ fun BookListScreen(
             options = listOf(
                 OptionItem(
                     label = deleteLabel,
-                    onClick = { selectedBookState.value?.let { onDeleteBook(it) } }
+                    onClick = { selectedBookState.value?.let { onDeleteBooks(listOf(it)) } }
                 )
             ),
             onDismiss = { selectedBookState.value = null }
+        )
+    }
+
+    if (showDeleteDialog && selectedBooks.isNotEmpty()) {
+        DeleteMultipleBooksDialog(
+            bookCount = selectedBooks.size,
+            onConfirm = {
+                onDeleteBooks(selectedBooks.toList())
+                selectedBooks = emptySet()
+                isSelectionMode = false
+                showDeleteDialog = false
+            },
+            onDismiss = {
+                showDeleteDialog = false
+            }
         )
     }
 
@@ -87,9 +123,21 @@ fun BookListScreen(
     )
 
     Scaffold(
-        topBar = { BookListTopBar() },
+        topBar = {
+            BookListTopBar(
+                isSelectionMode = isSelectionMode,
+                selectedCount = selectedBooks.size,
+                onClearSelection = {
+                    selectedBooks = emptySet()
+                    isSelectionMode = false
+                },
+                onDeleteClick = { showDeleteDialog = true }
+            )
+        },
         floatingActionButton = {
-            BookListFab(supportedMimeTypes, onImportBooks)
+            if (!isSelectionMode) {
+                BookListFab(supportedMimeTypes, onImportBooks)
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         modifier = modifier
@@ -98,29 +146,113 @@ fun BookListScreen(
             books = books,
             paddingValues = paddingValues,
             onBookMoreClick = { selectedBookState.value = it },
-            onBookClick = onBookClick
+            onBookLongClick = { book ->
+                if (!isSelectionMode) {
+                    isSelectionMode = true
+                    selectedBooks = setOf(book)
+                } else {
+                    toggleBookSelection(book)
+                }
+            },
+            onBookClick = { book ->
+                if (isSelectionMode) {
+                    toggleBookSelection(book)
+                } else {
+                    onBookClick(book)
+                }
+            },
+            isSelectionMode = isSelectionMode,
+            selectedBooks = selectedBooks
         )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun BookListTopBar() {
-    CenterAlignedTopAppBar(
-        title = {
+private fun DeleteMultipleBooksDialog(
+    bookCount: Int,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.delete_books_title)) },
+        text = {
             Text(
-                text = stringResource(R.string.my_books),
-                style = MaterialTheme.typography.titleLarge
+                if (bookCount == 1) {
+                    stringResource(R.string.delete_book_message)
+                } else {
+                    stringResource(R.string.delete_books_message, bookCount)
+                }
             )
         },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            scrolledContainerColor = Color.Unspecified,
-            navigationIconContentColor = Color.Unspecified,
-            titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            actionIconContentColor = Color.Unspecified
-        )
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(stringResource(R.string.delete))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BookListTopBar(
+    isSelectionMode: Boolean,
+    selectedCount: Int,
+    onClearSelection: () -> Unit,
+    onDeleteClick: () -> Unit
+) {
+    if (isSelectionMode) {
+        CenterAlignedTopAppBar(
+            title = {
+                Text(
+                    text = "$selectedCount",
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
+            navigationIcon = {
+                IconButton(onClick = onClearSelection) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
+                }
+            },
+            actions = {
+                IconButton(onClick = onDeleteClick) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = stringResource(R.string.delete),
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                scrolledContainerColor = Color.Unspecified,
+                navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        )
+    } else {
+        CenterAlignedTopAppBar(
+            title = {
+                Text(
+                    text = stringResource(R.string.my_books),
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                scrolledContainerColor = Color.Unspecified,
+                navigationIconContentColor = Color.Unspecified,
+                titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                actionIconContentColor = Color.Unspecified
+            )
+        )
+    }
 }
 
 @Composable
@@ -180,12 +312,23 @@ private fun BookListContent(
     books: List<Book>,
     paddingValues: PaddingValues,
     onBookMoreClick: (Book) -> Unit,
-    onBookClick: (Book) -> Unit
+    onBookClick: (Book) -> Unit,
+    onBookLongClick: (Book) -> Unit,
+    isSelectionMode: Boolean,
+    selectedBooks: Set<Book>
 ) {
     if (books.isEmpty()) {
         EmptyBooksMessage(paddingValues)
     } else {
-        BooksGrid(books, paddingValues, onBookMoreClick, onBookClick)
+        BooksGrid(
+            books,
+            paddingValues,
+            onBookMoreClick,
+            onBookClick,
+            onBookLongClick,
+            isSelectionMode,
+            selectedBooks
+        )
     }
 }
 
@@ -210,7 +353,10 @@ private fun BooksGrid(
     books: List<Book>,
     paddingValues: PaddingValues,
     onBookMoreClick: (Book) -> Unit,
-    onBookClick: (Book) -> Unit
+    onBookClick: (Book) -> Unit,
+    onBookLongClick: (Book) -> Unit,
+    isSelectionMode: Boolean,
+    selectedBooks: Set<Book>
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
@@ -225,6 +371,9 @@ private fun BooksGrid(
                 book = book,
                 onClick = { onBookClick(book) },
                 onMoreClick = { onBookMoreClick(book) },
+                onLongClick = { onBookLongClick(book) },
+                isSelected = selectedBooks.contains(book),
+                isSelectionMode = isSelectionMode,
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(0.65f)
