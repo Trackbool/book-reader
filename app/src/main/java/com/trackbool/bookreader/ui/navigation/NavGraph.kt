@@ -33,7 +33,10 @@ fun AppNavGraph(
                 onDeleteBooks = viewModel::deleteBooks,
                 onBookClick = { book ->
                     navController.navigate(
-                        AppScreens.BookReaderScreen.createRoute(book.id))
+                        AppScreens.BookReaderScreen.createRoute(book.id)
+                    ) {
+                        launchSingleTop = true
+                    }
                 },
                 importState = importState,
                 onResetImportState = viewModel::resetImportState,
