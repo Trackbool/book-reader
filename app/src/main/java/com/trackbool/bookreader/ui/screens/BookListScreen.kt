@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import com.trackbool.bookreader.R
 import com.trackbool.bookreader.data.source.AndroidBookSource
 import com.trackbool.bookreader.domain.model.Book
@@ -47,6 +48,7 @@ import com.trackbool.bookreader.viewmodel.ImportState
 
 @Composable
 fun BookListScreen(
+    navController: NavController,
     books: List<Book>,
     onImportBook: (BookSource) -> Unit,
     onDeleteBook: (Book) -> Unit,
