@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import android.net.Uri
+import androidx.compose.ui.draw.alpha
 import coil.compose.AsyncImage
 import com.trackbool.bookreader.R
 import com.trackbool.bookreader.domain.model.Book
@@ -232,7 +233,7 @@ private fun FileTypeTag(fileType: BookFileType, modifier: Modifier) {
         Surface(
             shape = RoundedCornerShape(4.dp),
             color = MaterialTheme.colorScheme.primaryContainer,
-            modifier = modifier
+            modifier = modifier.alpha(0.95f)
         ) {
             Text(
                 text = fileType.name,
