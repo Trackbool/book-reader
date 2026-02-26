@@ -96,13 +96,7 @@ class BookListViewModel @Inject constructor(
                 bookSourceFactory.create(uri)
             }
 
-            val titles = bookSources.map { bookSource ->
-                bookSource.getFileName()?.substringBeforeLast(".")
-                    ?: ""
-            }
-            val authors = List(bookSources.size) { "" }
-
-            val importResult = importBooksUseCase(bookSources, titles, authors)
+            val importResult = importBooksUseCase(bookSources)
 
             if (importResult.isSuccess) {
                 val books = importResult.getOrThrow()

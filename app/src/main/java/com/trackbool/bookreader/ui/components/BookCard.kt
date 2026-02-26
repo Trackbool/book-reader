@@ -78,10 +78,15 @@ fun BookCard(
                 BookInfo(
                     title = book.title,
                     author = book.author,
-                    fileType = book.fileType,
                     modifier = Modifier.weight(0.35f)
                 )
             }
+
+            FileTypeTag(fileType = book.fileType,
+                modifier = Modifier
+                    .padding(horizontal = 6.dp, vertical = 6.dp)
+                    .align(Alignment.TopStart)
+            )
 
             if (isSelectionMode) {
                 SelectionIndicator(
@@ -184,7 +189,6 @@ private fun MoreBookOptionsButton(onClick: () -> Unit,
 private fun BookInfo(
     title: String,
     author: String,
-    fileType: BookFileType,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -209,19 +213,23 @@ private fun BookInfo(
                 overflow = TextOverflow.Ellipsis
             )
         }
+    }
+}
 
-        if (fileType != BookFileType.NONE) {
-            Surface(
-                shape = RoundedCornerShape(4.dp),
-                color = MaterialTheme.colorScheme.primaryContainer
-            ) {
-                Text(
-                    text = fileType.name,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                )
-            }
+@Composable
+private fun FileTypeTag(fileType: BookFileType, modifier: Modifier) {
+    if (fileType != BookFileType.NONE) {
+        Surface(
+            shape = RoundedCornerShape(4.dp),
+            color = MaterialTheme.colorScheme.primaryContainer,
+            modifier = modifier
+        ) {
+            Text(
+                text = fileType.name,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+            )
         }
     }
 }
