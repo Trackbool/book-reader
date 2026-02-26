@@ -103,27 +103,15 @@ fun BookListScreen(
         )
     }
 
-    val importSuccessMessage = stringResource(R.string.import_success)
-    val importSuccessMessagePlural = stringResource(R.string.import_success_plural)
     ImportStateEffect(
         importState = importState,
         snackbarHostState = snackbarHostState,
-        importSuccessMessage = importSuccessMessage,
-        importSuccessMessagePlural = importSuccessMessagePlural,
         onResetImportState = onResetImportState
     )
 
-    val deleteSuccessMessage = stringResource(R.string.delete_success)
-    val deleteSuccessMessagePlural = stringResource(R.string.delete_success_plural)
-    val deleteErrorMessage = stringResource(R.string.error_delete_book)
-    val deleteErrorMessagePlural = stringResource(R.string.error_delete_book_plural)
     DeleteStateEffect(
         deleteState = deleteState,
         snackbarHostState = snackbarHostState,
-        deleteSuccessMessage = deleteSuccessMessage,
-        deleteSuccessMessagePlural = deleteSuccessMessagePlural,
-        deleteErrorMessage = deleteErrorMessage,
-        deleteErrorMessagePlural = deleteErrorMessagePlural,
         onResetDeleteState = onResetDeleteState
     )
 
@@ -284,10 +272,11 @@ private fun BookListFab(
 private fun ImportStateEffect(
     importState: ImportState,
     snackbarHostState: SnackbarHostState,
-    importSuccessMessage: String,
-    importSuccessMessagePlural: String,
     onResetImportState: () -> Unit
 ) {
+    val importSuccessMessage = stringResource(R.string.import_success)
+    val importSuccessMessagePlural = stringResource(R.string.import_success_plural)
+
     LaunchedEffect(importState) {
         when (importState) {
             is ImportState.Success -> {
@@ -312,12 +301,13 @@ private fun ImportStateEffect(
 private fun DeleteStateEffect(
     deleteState: DeleteState,
     snackbarHostState: SnackbarHostState,
-    deleteSuccessMessage: String,
-    deleteSuccessMessagePlural: String,
-    deleteErrorMessage: String,
-    deleteErrorMessagePlural: String,
     onResetDeleteState: () -> Unit
 ) {
+    val deleteSuccessMessage = stringResource(R.string.delete_success)
+    val deleteSuccessMessagePlural = stringResource(R.string.delete_success_plural)
+    val deleteErrorMessage = stringResource(R.string.error_delete_book)
+    val deleteErrorMessagePlural = stringResource(R.string.error_delete_book_plural)
+
     LaunchedEffect(deleteState) {
         when (deleteState) {
             is DeleteState.Success -> {
