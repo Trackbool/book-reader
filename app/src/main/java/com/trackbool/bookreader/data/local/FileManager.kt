@@ -91,6 +91,6 @@ class FileManager(private val context: Context) {
     }
 
     companion object {
-        private const val BOOKS_DIR = "libros"
+        private const val BOOKS_DIR = "books"
     }
 }
