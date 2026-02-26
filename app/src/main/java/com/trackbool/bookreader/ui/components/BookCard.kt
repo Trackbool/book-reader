@@ -1,6 +1,5 @@
 package com.trackbool.bookreader.ui.components
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -12,20 +11,24 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import android.net.Uri
 import coil.compose.AsyncImage
 import com.trackbool.bookreader.R
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.ui.theme.BookReaderTheme
+import java.io.File
 
 @Composable
 fun BookCard(
@@ -64,12 +67,13 @@ fun BookCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(0.65f)
                 ) {
                     BookCoverImage(
                         coverUrl = book.coverUrl,
                         title = book.title,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(2f / 3f)
                     )
                 }
 
@@ -78,7 +82,7 @@ fun BookCard(
                 BookInfo(
                     title = book.title,
                     author = book.author,
-                    modifier = Modifier.weight(0.35f)
+                    modifier = Modifier
                 )
             }
 
@@ -145,6 +149,11 @@ private fun BookCoverImage(
     title: String,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val imageUri = remember(coverUrl) {
+        Uri.fromFile(File(context.filesDir, coverUrl)).toString()
+    }
+
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
@@ -153,7 +162,7 @@ private fun BookCoverImage(
     ) {
         if (coverUrl.isNotEmpty()) {
             AsyncImage(
-                model = coverUrl,
+                model = imageUri,
                 contentDescription = stringResource(R.string.book_cover, title),
                 placeholder = painterResource(R.drawable.book_placeholder),
                 error = painterResource(R.drawable.book_placeholder),

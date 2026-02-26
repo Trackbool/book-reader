@@ -400,7 +400,6 @@ private fun BooksGrid(
                 isSelectionMode = isSelectionMode,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(0.65f)
             )
         }
     }
