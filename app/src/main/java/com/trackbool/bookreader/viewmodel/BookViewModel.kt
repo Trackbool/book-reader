@@ -1,20 +1,18 @@
 package com.trackbool.bookreader.viewmodel
 
-import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.trackbool.bookreader.R
-import com.trackbool.bookreader.data.source.AndroidBookSource
+import com.trackbool.bookreader.data.source.BookSourceFactory
 import com.trackbool.bookreader.domain.model.Book
-import com.trackbool.bookreader.domain.source.BookSource
+import com.trackbool.bookreader.domain.model.MimeTypes
 import com.trackbool.bookreader.domain.usecase.AddBooksUseCase
 import com.trackbool.bookreader.domain.usecase.DeleteBooksUseCase
 import com.trackbool.bookreader.domain.usecase.GetAllBooksUseCase
 import com.trackbool.bookreader.domain.usecase.ImportBooksUseCase
 import com.trackbool.bookreader.domain.usecase.UpdateBookProgressUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,7 +26,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class BookViewModel @Inject constructor(
-    @param:ApplicationContext private val context: Context,
+    private val bookSourceFactory: BookSourceFactory,
     private val getAllBooksUseCase: GetAllBooksUseCase,
     private val importBooksUseCase: ImportBooksUseCase,
     private val addBooksUseCase: AddBooksUseCase,
@@ -50,7 +48,7 @@ class BookViewModel @Inject constructor(
     private val _deleteState = MutableStateFlow<DeleteState>(DeleteState.Idle)
     val deleteState: StateFlow<DeleteState> = _deleteState.asStateFlow()
 
-    val supportedMimeTypes: List<String> = listOf("application/pdf", "application/epub+zip")
+    val supportedMimeTypes: List<String> = MimeTypes.SUPPORTED
 
     private val _selectedBooks = MutableStateFlow<Set<Book>>(emptySet())
     val selectedBooks: StateFlow<Set<Book>> = _selectedBooks.asStateFlow()
@@ -96,12 +94,12 @@ class BookViewModel @Inject constructor(
             _importState.value = ImportState.Importing
 
             val bookSources = uris.map { uri ->
-                AndroidBookSource(context, uri)
+                bookSourceFactory.create(uri)
             }
 
             val titles = bookSources.map { bookSource ->
                 bookSource.getFileName()?.substringBeforeLast(".")
-                    ?: context.getString(R.string.untitled)
+                    ?: ""
             }
             val authors = List(bookSources.size) { "" }
 
@@ -113,16 +111,10 @@ class BookViewModel @Inject constructor(
                 _importState.value = if (addResult.isSuccess) {
                     ImportState.Success(books.size)
                 } else {
-                    ImportState.Error(
-                        addResult.exceptionOrNull()?.message
-                            ?: context.getString(R.string.error_save_book)
-                    )
+                    ImportState.Error(R.string.error_save_book)
                 }
             } else {
-                _importState.value = ImportState.Error(
-                    importResult.exceptionOrNull()?.message
-                        ?: context.getString(R.string.error_import_book)
-                )
+                _importState.value = ImportState.Error(R.string.error_import_book)
             }
         }
     }
@@ -140,10 +132,7 @@ class BookViewModel @Inject constructor(
                 deleteBooksUseCase(books)
                 _deleteState.value = DeleteState.Success(books.size)
             } catch (e: Exception) {
-                _deleteState.value = DeleteState.Error(
-                    e.message ?: context.getString(R.string.error_delete_book),
-                    books.size
-                )
+                _deleteState.value = DeleteState.Error(R.string.error_delete_book, books.size)
             }
         }
     }
@@ -153,12 +142,12 @@ sealed class ImportState {
     data object Idle : ImportState()
     data object Importing : ImportState()
     data class Success(val count: Int) : ImportState()
-    data class Error(val message: String) : ImportState()
+    data class Error(val messageResId: Int) : ImportState()
 }
 
 sealed class DeleteState {
     data object Idle : DeleteState()
     data object Deleting : DeleteState()
     data class Success(val count: Int) : DeleteState()
-    data class Error(val message: String, val count: Int = 0) : DeleteState()
+    data class Error(val messageResId: Int, val count: Int = 0) : DeleteState()
 }

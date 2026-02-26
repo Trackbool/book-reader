@@ -276,6 +276,8 @@ private fun ImportStateEffect(
 ) {
     val importSuccessMessage = stringResource(R.string.import_success)
     val importSuccessMessagePlural = stringResource(R.string.import_success_plural)
+    val importErrorMessage = stringResource(R.string.error_import_book)
+    val saveErrorMessage = stringResource(R.string.error_save_book)
 
     LaunchedEffect(importState) {
         when (importState) {
@@ -289,7 +291,9 @@ private fun ImportStateEffect(
                 onResetImportState()
             }
             is ImportState.Error -> {
-                snackbarHostState.showSnackbar(importState.message)
+                val messageResId = importState.messageResId
+                val message = if (messageResId == R.string.error_import_book) importErrorMessage else saveErrorMessage
+                snackbarHostState.showSnackbar(message)
                 onResetImportState()
             }
             else -> {}
@@ -306,7 +310,6 @@ private fun DeleteStateEffect(
     val deleteSuccessMessage = stringResource(R.string.delete_success)
     val deleteSuccessMessagePlural = stringResource(R.string.delete_success_plural)
     val deleteErrorMessage = stringResource(R.string.error_delete_book)
-    val deleteErrorMessagePlural = stringResource(R.string.error_delete_book_plural)
 
     LaunchedEffect(deleteState) {
         when (deleteState) {
@@ -320,12 +323,7 @@ private fun DeleteStateEffect(
                 onResetDeleteState()
             }
             is DeleteState.Error -> {
-                val message = if (deleteState.count > 1) {
-                    String.format(deleteErrorMessagePlural, deleteState.count)
-                } else {
-                    deleteErrorMessage
-                }
-                snackbarHostState.showSnackbar(message)
+                snackbarHostState.showSnackbar(deleteErrorMessage)
                 onResetDeleteState()
             }
             else -> {}
