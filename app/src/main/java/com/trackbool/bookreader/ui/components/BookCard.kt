@@ -71,15 +71,6 @@ fun BookCard(
                         title = book.title,
                         modifier = Modifier.fillMaxSize()
                     )
-
-                    if (!isSelectionMode) {
-                        MoreBookOptionsButton(
-                            onClick = onMoreClick,
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .size(32.dp)
-                        )
-                    }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -99,6 +90,13 @@ fun BookCard(
                         .align(Alignment.TopEnd)
                         .padding(4.dp)
                         .size(24.dp)
+                )
+            } else {
+                MoreBookOptionsButton(
+                    onClick = onMoreClick,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(32.dp)
                 )
             }
         }
