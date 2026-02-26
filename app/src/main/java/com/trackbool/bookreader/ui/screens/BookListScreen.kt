@@ -6,7 +6,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -69,7 +68,7 @@ fun BookListScreen(
     onEnterSelectionMode: (Book) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val snackbarHostState = remember { SnackbarHostState() }
+    val snackBarHostState = remember { SnackbarHostState() }
     var selectedBookForOptions by remember { mutableStateOf<Book?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
@@ -105,13 +104,13 @@ fun BookListScreen(
 
     ImportStateEffect(
         importState = importState,
-        snackbarHostState = snackbarHostState,
+        snackBarHostState = snackBarHostState,
         onResetImportState = onResetImportState
     )
 
     DeleteStateEffect(
         deleteState = deleteState,
-        snackbarHostState = snackbarHostState,
+        snackBarHostState = snackBarHostState,
         onResetDeleteState = onResetDeleteState
     )
 
@@ -132,7 +131,7 @@ fun BookListScreen(
                     BookListFab(supportedMimeTypes, onImportBooks)
                 }
             },
-            snackbarHost = { SnackbarHost(snackbarHostState) },
+            snackbarHost = { SnackbarHost(snackBarHostState) },
             modifier = modifier
         ) { paddingValues ->
             BookListContent(
@@ -271,7 +270,7 @@ private fun BookListFab(
 @Composable
 private fun ImportStateEffect(
     importState: ImportState,
-    snackbarHostState: SnackbarHostState,
+    snackBarHostState: SnackbarHostState,
     onResetImportState: () -> Unit
 ) {
     val importSuccessMessage = stringResource(R.string.import_success)
@@ -287,13 +286,13 @@ private fun ImportStateEffect(
                 } else {
                     importSuccessMessage
                 }
-                snackbarHostState.showSnackbar(message)
+                snackBarHostState.showSnackbar(message)
                 onResetImportState()
             }
             is ImportState.Error -> {
                 val messageResId = importState.messageResId
                 val message = if (messageResId == R.string.error_import_book) importErrorMessage else saveErrorMessage
-                snackbarHostState.showSnackbar(message)
+                snackBarHostState.showSnackbar(message)
                 onResetImportState()
             }
             else -> {}
@@ -304,7 +303,7 @@ private fun ImportStateEffect(
 @Composable
 private fun DeleteStateEffect(
     deleteState: DeleteState,
-    snackbarHostState: SnackbarHostState,
+    snackBarHostState: SnackbarHostState,
     onResetDeleteState: () -> Unit
 ) {
     val deleteSuccessMessage = stringResource(R.string.delete_success)
@@ -319,11 +318,11 @@ private fun DeleteStateEffect(
                 } else {
                     deleteSuccessMessage
                 }
-                snackbarHostState.showSnackbar(message)
+                snackBarHostState.showSnackbar(message)
                 onResetDeleteState()
             }
             is DeleteState.Error -> {
-                snackbarHostState.showSnackbar(deleteErrorMessage)
+                snackBarHostState.showSnackbar(deleteErrorMessage)
                 onResetDeleteState()
             }
             else -> {}
