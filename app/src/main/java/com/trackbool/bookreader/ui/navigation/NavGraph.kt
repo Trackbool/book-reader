@@ -11,7 +11,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.trackbool.bookreader.ui.screens.BookListScreen
 import com.trackbool.bookreader.ui.screens.BookReaderScreen
-import com.trackbool.bookreader.viewmodel.BookViewModel
+import com.trackbool.bookreader.viewmodel.BookListViewModel
 
 @Composable
 fun AppNavGraph(
@@ -23,7 +23,7 @@ fun AppNavGraph(
         startDestination = startDestination
     ) {
         composable(route = AppScreens.BookListScreen.route) {
-            val viewModel: BookViewModel = hiltViewModel()
+            val viewModel: BookListViewModel = hiltViewModel()
             val books by viewModel.books.collectAsState()
             val importState by viewModel.importState.collectAsState()
             val deleteState by viewModel.deleteState.collectAsState()
