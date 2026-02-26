@@ -82,7 +82,8 @@ fun BookCard(
                 )
             }
 
-            FileTypeTag(fileType = book.fileType,
+            FileTypeTag(
+                fileType = book.fileType,
                 modifier = Modifier
                     .padding(horizontal = 6.dp, vertical = 6.dp)
                     .align(Alignment.TopStart)
