@@ -1,9 +1,11 @@
 package com.trackbool.bookreader.viewmodel
 
 import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.trackbool.bookreader.R
+import com.trackbool.bookreader.data.source.AndroidBookSource
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.source.BookSource
 import com.trackbool.bookreader.domain.usecase.AddBooksUseCase
@@ -50,6 +52,37 @@ class BookViewModel @Inject constructor(
 
     val supportedMimeTypes: List<String> = listOf("application/pdf", "application/epub+zip")
 
+    private val _selectedBooks = MutableStateFlow<Set<Book>>(emptySet())
+    val selectedBooks: StateFlow<Set<Book>> = _selectedBooks.asStateFlow()
+
+    private val _isSelectionMode = MutableStateFlow(false)
+    val isSelectionMode: StateFlow<Boolean> = _isSelectionMode.asStateFlow()
+
+    fun toggleBookSelection(book: Book) {
+        val current = _selectedBooks.value
+        _selectedBooks.value = if (current.contains(book)) current - book else current + book
+        updateSelectionMode()
+    }
+
+    fun clearSelection() {
+        _selectedBooks.value = emptySet()
+        _isSelectionMode.value = false
+    }
+
+    fun enterSelectionMode(book: Book) {
+        _isSelectionMode.value = true
+        _selectedBooks.value = setOf(book)
+    }
+
+    fun exitSelectionMode() {
+        _isSelectionMode.value = false
+        _selectedBooks.value = emptySet()
+    }
+
+    private fun updateSelectionMode() {
+        _isSelectionMode.value = _selectedBooks.value.isNotEmpty()
+    }
+
     fun resetDeleteState() {
         _deleteState.value = DeleteState.Idle
     }
@@ -58,9 +91,13 @@ class BookViewModel @Inject constructor(
         _importState.value = ImportState.Idle
     }
 
-    fun importBooks(bookSources: List<BookSource>) {
+    fun importBooks(uris: List<Uri>) {
         viewModelScope.launch {
             _importState.value = ImportState.Importing
+
+            val bookSources = uris.map { uri ->
+                AndroidBookSource(context, uri)
+            }
 
             val titles = bookSources.map { bookSource ->
                 bookSource.getFileName()?.substringBeforeLast(".")

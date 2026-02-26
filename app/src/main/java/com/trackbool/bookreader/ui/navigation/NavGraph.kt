@@ -28,6 +28,8 @@ fun AppNavGraph(
             val importState by viewModel.importState.collectAsState()
             val deleteState by viewModel.deleteState.collectAsState()
             val isLoading by viewModel.isLoading.collectAsState()
+            val isSelectionMode by viewModel.isSelectionMode.collectAsState()
+            val selectedBooks by viewModel.selectedBooks.collectAsState()
 
             BookListScreen(
                 books = books,
@@ -45,7 +47,12 @@ fun AppNavGraph(
                 deleteState = deleteState,
                 onResetDeleteState = viewModel::resetDeleteState,
                 isLoading = isLoading,
-                supportedMimeTypes = viewModel.supportedMimeTypes
+                supportedMimeTypes = viewModel.supportedMimeTypes,
+                isSelectionMode = isSelectionMode,
+                selectedBooks = selectedBooks,
+                onToggleBookSelection = viewModel::toggleBookSelection,
+                onClearSelection = viewModel::clearSelection,
+                onEnterSelectionMode = viewModel::enterSelectionMode
             )
         }
 

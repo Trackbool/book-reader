@@ -32,7 +32,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,13 +39,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.trackbool.bookreader.R
-import com.trackbool.bookreader.data.source.AndroidBookSource
 import com.trackbool.bookreader.domain.model.Book
-import com.trackbool.bookreader.domain.source.BookSource
 import com.trackbool.bookreader.ui.components.BookCard
 import com.trackbool.bookreader.ui.components.LoadingIndicator
 import com.trackbool.bookreader.ui.components.OptionItem
@@ -57,7 +53,7 @@ import com.trackbool.bookreader.viewmodel.ImportState
 @Composable
 fun BookListScreen(
     books: List<Book>,
-    onImportBooks: (List<BookSource>) -> Unit,
+    onImportBooks: (List<Uri>) -> Unit,
     onDeleteBooks: (List<Book>) -> Unit,
     onBookClick: (Book) -> Unit,
     importState: ImportState,
@@ -66,27 +62,18 @@ fun BookListScreen(
     onResetDeleteState: () -> Unit,
     isLoading: Boolean,
     supportedMimeTypes: List<String>,
+    isSelectionMode: Boolean,
+    selectedBooks: Set<Book>,
+    onToggleBookSelection: (Book) -> Unit,
+    onClearSelection: () -> Unit,
+    onEnterSelectionMode: (Book) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
-    val selectedBookState: MutableState<Book?> = remember { mutableStateOf(null) }
-
-    var isSelectionMode by remember { mutableStateOf(false) }
-    var selectedBooks by remember { mutableStateOf(setOf<Book>()) }
+    var selectedBookForOptions by remember { mutableStateOf<Book?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    fun toggleBookSelection(book: Book) {
-        selectedBooks = if (selectedBooks.contains(book)) {
-            selectedBooks - book
-        } else {
-            selectedBooks + book
-        }
-        if (selectedBooks.isEmpty()) {
-            isSelectionMode = false
-        }
-    }
-
-    if (selectedBookState.value != null && !isSelectionMode) {
+    if (selectedBookForOptions != null && !isSelectionMode) {
         val optionsTitle = stringResource(R.string.book_options)
         val deleteLabel = stringResource(R.string.delete_from_library)
 
@@ -95,10 +82,10 @@ fun BookListScreen(
             options = listOf(
                 OptionItem(
                     label = deleteLabel,
-                    onClick = { selectedBookState.value?.let { onDeleteBooks(listOf(it)) } }
+                    onClick = { selectedBookForOptions?.let { onDeleteBooks(listOf(it)) } }
                 )
             ),
-            onDismiss = { selectedBookState.value = null }
+            onDismiss = { selectedBookForOptions = null }
         )
     }
 
@@ -107,8 +94,7 @@ fun BookListScreen(
             bookCount = selectedBooks.size,
             onConfirm = {
                 onDeleteBooks(selectedBooks.toList())
-                selectedBooks = emptySet()
-                isSelectionMode = false
+                onClearSelection()
                 showDeleteDialog = false
             },
             onDismiss = {
@@ -149,10 +135,7 @@ fun BookListScreen(
                 BookListTopBar(
                     isSelectionMode = isSelectionMode,
                     selectedCount = selectedBooks.size,
-                    onClearSelection = {
-                        selectedBooks = emptySet()
-                        isSelectionMode = false
-                    },
+                    onClearSelection = onClearSelection,
                     onDeleteClick = { showDeleteDialog = true }
                 )
             },
@@ -167,18 +150,17 @@ fun BookListScreen(
             BookListContent(
                 books = books,
                 paddingValues = paddingValues,
-                onBookMoreClick = { selectedBookState.value = it },
+                onBookMoreClick = { selectedBookForOptions = it },
                 onBookLongClick = { book ->
                     if (!isSelectionMode) {
-                        isSelectionMode = true
-                        selectedBooks = setOf(book)
+                        onEnterSelectionMode(book)
                     } else {
-                        toggleBookSelection(book)
+                        onToggleBookSelection(book)
                     }
                 },
                 onBookClick = { book ->
                     if (isSelectionMode) {
-                        toggleBookSelection(book)
+                        onToggleBookSelection(book)
                     } else {
                         onBookClick(book)
                     }
@@ -281,17 +263,13 @@ private fun BookListTopBar(
 @Composable
 private fun BookListFab(
     supportedMimeTypes: List<String>,
-    onImportBooks: (List<BookSource>) -> Unit
+    onImportBooks: (List<Uri>) -> Unit
 ) {
-    val context = LocalContext.current
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments()
     ) { uris: List<Uri> ->
         if (uris.isNotEmpty()) {
-            val bookSources = uris.map { uri ->
-                AndroidBookSource(context, uri)
-            }
-            onImportBooks(bookSources)
+            onImportBooks(uris)
         }
     }
 
