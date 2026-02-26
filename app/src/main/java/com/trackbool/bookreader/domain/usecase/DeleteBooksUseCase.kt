@@ -12,7 +12,7 @@ class DeleteBooksUseCase(
         val result = repository.deleteBooks(books)
 
         if (result.isSuccess) {
-            fileManager.deleteBookFiles(books.map { it.filePath })
+            fileManager.deleteBookFiles(books)
         }
 
         return result

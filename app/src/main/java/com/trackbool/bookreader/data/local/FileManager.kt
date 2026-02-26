@@ -1,6 +1,7 @@
 package com.trackbool.bookreader.data.local
 
 import android.content.Context
+import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.source.BookSource
 import java.io.File
@@ -66,12 +67,17 @@ class FileManager(private val context: Context) {
         return fileName.substringAfterLast('.', "").lowercase()
     }
 
-    fun deleteBookFiles(relativePaths: List<String>): Result<Unit> {
+    fun deleteBookFiles(books: List<Book>): Result<Unit> {
         return try {
-            relativePaths.forEach { relativePath ->
-                val file = File(context.filesDir, relativePath)
+            books.forEach { book ->
+                val file = File(context.filesDir, book.filePath)
                 if (file.exists()) {
                     file.delete()
+                }
+
+                val cover = File(context.filesDir, book.coverPath)
+                if (cover.exists()) {
+                    cover.delete()
                 }
             }
             Result.success(Unit)

@@ -25,7 +25,7 @@ class ImportBooksUseCase(
                     title = metadata?.title ?: importResult.fileName.substringBeforeLast("."),
                     author = metadata?.author ?: "",
                     description = metadata?.description ?: "",
-                    coverUrl = metadata?.coverPath ?: "",
+                    coverPath = metadata?.coverPath ?: "",
                     filePath = importResult.filePath,
                     fileType = importResult.fileType,
                     fileName = importResult.fileName

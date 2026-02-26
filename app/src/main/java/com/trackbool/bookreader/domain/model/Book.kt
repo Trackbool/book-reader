@@ -11,7 +11,7 @@ data class Book(
     val title: String,
     val author: String,
     val description: String = "",
-    val coverUrl: String = "",
+    val coverPath: String = "",
     val currentPage: Int = 0,
     val totalPages: Int = 0,
     val isCompleted: Boolean = false,

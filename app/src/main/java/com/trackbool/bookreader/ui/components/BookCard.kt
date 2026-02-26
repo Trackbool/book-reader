@@ -69,7 +69,7 @@ fun BookCard(
                         .fillMaxWidth()
                 ) {
                     BookCoverImage(
-                        coverUrl = book.coverUrl,
+                        coverUrl = book.coverPath,
                         title = book.title,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -253,7 +253,7 @@ private fun BookCardPreview() {
                 id = 1,
                 title = "Clean Architecture",
                 author = "Robert C. Martin",
-                coverUrl = "",
+                coverPath = "",
                 fileType = BookFileType.PDF,
                 filePath = "",
                 currentPage = 0,
@@ -277,7 +277,7 @@ private fun BookCardSmallPreview() {
                 id = 2,
                 title = "Very Long Title That Should Truncate Properly",
                 author = "Author Name",
-                coverUrl = "",
+                coverPath = "",
                 fileType = BookFileType.EPUB,
                 filePath = "",
                 currentPage = 0,
