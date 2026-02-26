@@ -46,9 +46,10 @@ object UseCaseModule {
     @Provides
     @ViewModelScoped
     fun provideDeleteBooksUseCase(
-        repository: BookRepository
+        repository: BookRepository,
+        fileManager: FileManager
     ): DeleteBooksUseCase {
-        return DeleteBooksUseCase(repository)
+        return DeleteBooksUseCase(repository, fileManager)
     }
 
     @Provides

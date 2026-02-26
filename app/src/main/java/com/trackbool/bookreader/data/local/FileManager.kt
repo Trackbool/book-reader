@@ -66,11 +66,13 @@ class FileManager(private val context: Context) {
         return fileName.substringAfterLast('.', "").lowercase()
     }
 
-    fun deleteBookFile(relativePath: String): Result<Unit> {
+    fun deleteBookFiles(relativePaths: List<String>): Result<Unit> {
         return try {
-            val file = File(context.filesDir, relativePath)
-            if (file.exists()) {
-                file.delete()
+            relativePaths.forEach { relativePath ->
+                val file = File(context.filesDir, relativePath)
+                if (file.exists()) {
+                    file.delete()
+                }
             }
             Result.success(Unit)
         } catch (e: Exception) {
