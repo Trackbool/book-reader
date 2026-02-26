@@ -17,6 +17,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -31,13 +34,25 @@ class BookViewModel @Inject constructor(
     private val deleteBooksUseCase: DeleteBooksUseCase,
 ) : ViewModel() {
 
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
     val books: StateFlow<List<Book>> = getAllBooksUseCase()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .onStart { _isLoading.value = true }
+        .onEach { _isLoading.value = false }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _importState = MutableStateFlow<ImportState>(ImportState.Idle)
     val importState: StateFlow<ImportState> = _importState.asStateFlow()
 
+    private val _deleteState = MutableStateFlow<DeleteState>(DeleteState.Idle)
+    val deleteState: StateFlow<DeleteState> = _deleteState.asStateFlow()
+
     val supportedMimeTypes: List<String> = listOf("application/pdf", "application/epub+zip")
+
+    fun resetDeleteState() {
+        _deleteState.value = DeleteState.Idle
+    }
 
     fun resetImportState() {
         _importState.value = ImportState.Idle
@@ -83,7 +98,16 @@ class BookViewModel @Inject constructor(
 
     fun deleteBooks(books: List<Book>) {
         viewModelScope.launch {
-            deleteBooksUseCase(books)
+            _deleteState.value = DeleteState.Deleting
+            try {
+                deleteBooksUseCase(books)
+                _deleteState.value = DeleteState.Success(books.size)
+            } catch (e: Exception) {
+                _deleteState.value = DeleteState.Error(
+                    e.message ?: context.getString(R.string.error_delete_book),
+                    books.size
+                )
+            }
         }
     }
 }
@@ -93,4 +117,11 @@ sealed class ImportState {
     data object Importing : ImportState()
     data class Success(val count: Int) : ImportState()
     data class Error(val message: String) : ImportState()
+}
+
+sealed class DeleteState {
+    data object Idle : DeleteState()
+    data object Deleting : DeleteState()
+    data class Success(val count: Int) : DeleteState()
+    data class Error(val message: String, val count: Int = 0) : DeleteState()
 }

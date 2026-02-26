@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -49,8 +48,10 @@ import com.trackbool.bookreader.data.source.AndroidBookSource
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.source.BookSource
 import com.trackbool.bookreader.ui.components.BookCard
+import com.trackbool.bookreader.ui.components.LoadingIndicator
 import com.trackbool.bookreader.ui.components.OptionItem
 import com.trackbool.bookreader.ui.components.OptionsDialog
+import com.trackbool.bookreader.viewmodel.DeleteState
 import com.trackbool.bookreader.viewmodel.ImportState
 
 @Composable
@@ -61,6 +62,9 @@ fun BookListScreen(
     onBookClick: (Book) -> Unit,
     importState: ImportState,
     onResetImportState: () -> Unit,
+    deleteState: DeleteState,
+    onResetDeleteState: () -> Unit,
+    isLoading: Boolean,
     supportedMimeTypes: List<String>,
     modifier: Modifier = Modifier
 ) {
@@ -123,48 +127,66 @@ fun BookListScreen(
         onResetImportState = onResetImportState
     )
 
-    Scaffold(
-        topBar = {
-            BookListTopBar(
-                isSelectionMode = isSelectionMode,
-                selectedCount = selectedBooks.size,
-                onClearSelection = {
-                    selectedBooks = emptySet()
-                    isSelectionMode = false
-                },
-                onDeleteClick = { showDeleteDialog = true }
-            )
-        },
-        floatingActionButton = {
-            if (!isSelectionMode) {
-                BookListFab(supportedMimeTypes, onImportBooks)
-            }
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        modifier = modifier
-    ) { paddingValues ->
-        BookListContent(
-            books = books,
-            paddingValues = paddingValues,
-            onBookMoreClick = { selectedBookState.value = it },
-            onBookLongClick = { book ->
+    val deleteSuccessMessage = stringResource(R.string.delete_success)
+    val deleteSuccessMessagePlural = stringResource(R.string.delete_success_plural)
+    val deleteErrorMessage = stringResource(R.string.error_delete_book)
+    val deleteErrorMessagePlural = stringResource(R.string.error_delete_book_plural)
+    DeleteStateEffect(
+        deleteState = deleteState,
+        snackbarHostState = snackbarHostState,
+        deleteSuccessMessage = deleteSuccessMessage,
+        deleteSuccessMessagePlural = deleteSuccessMessagePlural,
+        deleteErrorMessage = deleteErrorMessage,
+        deleteErrorMessagePlural = deleteErrorMessagePlural,
+        onResetDeleteState = onResetDeleteState
+    )
+
+    if (isLoading) {
+        LoadingIndicator()
+    } else {
+        Scaffold(
+            topBar = {
+                BookListTopBar(
+                    isSelectionMode = isSelectionMode,
+                    selectedCount = selectedBooks.size,
+                    onClearSelection = {
+                        selectedBooks = emptySet()
+                        isSelectionMode = false
+                    },
+                    onDeleteClick = { showDeleteDialog = true }
+                )
+            },
+            floatingActionButton = {
                 if (!isSelectionMode) {
-                    isSelectionMode = true
-                    selectedBooks = setOf(book)
-                } else {
-                    toggleBookSelection(book)
+                    BookListFab(supportedMimeTypes, onImportBooks)
                 }
             },
-            onBookClick = { book ->
-                if (isSelectionMode) {
-                    toggleBookSelection(book)
-                } else {
-                    onBookClick(book)
-                }
-            },
-            isSelectionMode = isSelectionMode,
-            selectedBooks = selectedBooks
-        )
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            modifier = modifier
+        ) { paddingValues ->
+            BookListContent(
+                books = books,
+                paddingValues = paddingValues,
+                onBookMoreClick = { selectedBookState.value = it },
+                onBookLongClick = { book ->
+                    if (!isSelectionMode) {
+                        isSelectionMode = true
+                        selectedBooks = setOf(book)
+                    } else {
+                        toggleBookSelection(book)
+                    }
+                },
+                onBookClick = { book ->
+                    if (isSelectionMode) {
+                        toggleBookSelection(book)
+                    } else {
+                        onBookClick(book)
+                    }
+                },
+                isSelectionMode = isSelectionMode,
+                selectedBooks = selectedBooks
+            )
+        }
     }
 }
 
@@ -302,6 +324,41 @@ private fun ImportStateEffect(
             is ImportState.Error -> {
                 snackbarHostState.showSnackbar(importState.message)
                 onResetImportState()
+            }
+            else -> {}
+        }
+    }
+}
+
+@Composable
+private fun DeleteStateEffect(
+    deleteState: DeleteState,
+    snackbarHostState: SnackbarHostState,
+    deleteSuccessMessage: String,
+    deleteSuccessMessagePlural: String,
+    deleteErrorMessage: String,
+    deleteErrorMessagePlural: String,
+    onResetDeleteState: () -> Unit
+) {
+    LaunchedEffect(deleteState) {
+        when (deleteState) {
+            is DeleteState.Success -> {
+                val message = if (deleteState.count > 1) {
+                    String.format(deleteSuccessMessagePlural, deleteState.count)
+                } else {
+                    deleteSuccessMessage
+                }
+                snackbarHostState.showSnackbar(message)
+                onResetDeleteState()
+            }
+            is DeleteState.Error -> {
+                val message = if (deleteState.count > 1) {
+                    String.format(deleteErrorMessagePlural, deleteState.count)
+                } else {
+                    deleteErrorMessage
+                }
+                snackbarHostState.showSnackbar(message)
+                onResetDeleteState()
             }
             else -> {}
         }

@@ -26,6 +26,8 @@ fun AppNavGraph(
             val viewModel: BookViewModel = hiltViewModel()
             val books by viewModel.books.collectAsState()
             val importState by viewModel.importState.collectAsState()
+            val deleteState by viewModel.deleteState.collectAsState()
+            val isLoading by viewModel.isLoading.collectAsState()
 
             BookListScreen(
                 books = books,
@@ -40,6 +42,9 @@ fun AppNavGraph(
                 },
                 importState = importState,
                 onResetImportState = viewModel::resetImportState,
+                deleteState = deleteState,
+                onResetDeleteState = viewModel::resetDeleteState,
+                isLoading = isLoading,
                 supportedMimeTypes = viewModel.supportedMimeTypes
             )
         }
