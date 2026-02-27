@@ -1,9 +1,14 @@
 package com.trackbool.bookreader.di
 
+import com.trackbool.bookreader.data.parser.content.DocumentContentParserFactoryImpl
+import com.trackbool.bookreader.data.parser.content.EpubContentParser
+import com.trackbool.bookreader.data.parser.content.PdfContentParser
 import com.trackbool.bookreader.data.parser.metadata.DocumentMetadataParserFactoryImpl
 import com.trackbool.bookreader.data.parser.metadata.EpubMetadataParser
 import com.trackbool.bookreader.data.parser.metadata.PdfMetadataParser
 import com.trackbool.bookreader.domain.model.BookFileType
+import com.trackbool.bookreader.domain.parser.content.DocumentContentParser
+import com.trackbool.bookreader.domain.parser.content.DocumentContentParserFactory
 import com.trackbool.bookreader.domain.parser.metadata.DocumentMetadataParser
 import com.trackbool.bookreader.domain.parser.metadata.DocumentMetadataParserFactory
 import dagger.Binds
@@ -23,25 +28,55 @@ abstract class ParserModule {
         factoryImpl: DocumentMetadataParserFactoryImpl
     ): DocumentMetadataParserFactory
 
+    @Binds
+    @Singleton
+    abstract fun bindDocumentContentParserFactory(
+        factoryImpl: DocumentContentParserFactoryImpl
+    ): DocumentContentParserFactory
+
     companion object {
         @Provides
         @Singleton
-        fun provideEpubParser(): EpubMetadataParser {
+        fun provideEpubMetadataParser(): EpubMetadataParser {
             return EpubMetadataParser()
         }
 
         @Provides
         @Singleton
-        fun providePdfParser(): PdfMetadataParser {
+        fun providePdfMetadataParser(): PdfMetadataParser {
             return PdfMetadataParser()
         }
 
         @Provides
         @Singleton
-        fun provideParsers(
+        fun provideMetadataParsers(
             epubParser: EpubMetadataParser,
             pdfParser: PdfMetadataParser
         ): Map<BookFileType, DocumentMetadataParser> {
+            return mapOf(
+                BookFileType.EPUB to epubParser,
+                BookFileType.PDF to pdfParser
+            )
+        }
+
+        @Provides
+        @Singleton
+        fun provideEpubContentParser(): EpubContentParser {
+            return EpubContentParser()
+        }
+
+        @Provides
+        @Singleton
+        fun providePdfContentParser(): PdfContentParser {
+            return PdfContentParser()
+        }
+
+        @Provides
+        @Singleton
+        fun provideContentParsers(
+            epubParser: EpubContentParser,
+            pdfParser: PdfContentParser
+        ): Map<BookFileType, DocumentContentParser> {
             return mapOf(
                 BookFileType.EPUB to epubParser,
                 BookFileType.PDF to pdfParser

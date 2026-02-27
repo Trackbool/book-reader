@@ -101,11 +101,7 @@ class BookFileRepositoryImpl(
     }
 
     private fun getFileType(extension: String): BookFileType {
-        return when (extension) {
-            "pdf" -> BookFileType.PDF
-            "epub" -> BookFileType.EPUB
-            else -> BookFileType.NONE
-        }
+        return BookFileType.fromExtension(extension)
     }
 
     companion object {

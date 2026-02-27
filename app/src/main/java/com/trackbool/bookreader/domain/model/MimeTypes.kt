@@ -1,5 +1,5 @@
 package com.trackbool.bookreader.domain.model
 
 object MimeTypes {
-    val SUPPORTED = listOf("application/pdf", "application/epub+zip")
+    val SUPPORTED = listOf(BookFileType.PDF.mimeType, BookFileType.EPUB.mimeType)
 }
