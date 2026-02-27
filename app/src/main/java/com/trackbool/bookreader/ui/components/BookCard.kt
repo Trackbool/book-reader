@@ -174,8 +174,8 @@ private fun BookCoverImage(
             Image(
                 painter = painterResource(R.drawable.book_placeholder),
                 contentDescription = null,
-                modifier = Modifier.matchParentSize(),
-                contentScale = ContentScale.Fit
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
             )
         }
     }
