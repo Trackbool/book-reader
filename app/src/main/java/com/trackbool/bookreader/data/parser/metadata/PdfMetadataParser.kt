@@ -1,4 +1,4 @@
-package com.trackbool.bookreader.data.parser
+package com.trackbool.bookreader.data.parser.metadata
 
 import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.model.DocumentMetadata

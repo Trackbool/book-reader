@@ -1,8 +1,8 @@
 package com.trackbool.bookreader.di
 
-import com.trackbool.bookreader.data.parser.DocumentMetadataParserFactoryImpl
-import com.trackbool.bookreader.data.parser.EpubMetadataParser
-import com.trackbool.bookreader.data.parser.PdfMetadataParser
+import com.trackbool.bookreader.data.parser.metadata.DocumentMetadataParserFactoryImpl
+import com.trackbool.bookreader.data.parser.metadata.EpubMetadataParser
+import com.trackbool.bookreader.data.parser.metadata.PdfMetadataParser
 import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.parser.metadata.DocumentMetadataParser
 import com.trackbool.bookreader.domain.parser.metadata.DocumentMetadataParserFactory
