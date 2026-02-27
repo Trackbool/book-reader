@@ -12,7 +12,6 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
@@ -23,6 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import android.net.Uri
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
 import coil.compose.AsyncImage
 import com.trackbool.bookreader.R
@@ -76,6 +76,13 @@ fun BookCard(
                             .fillMaxWidth()
                             .aspectRatio(2f / 3f)
                     )
+
+                    FileTypeTag(
+                        fileType = book.fileType,
+                        modifier = Modifier
+                            .padding(horizontal = 2.dp, vertical = 2.dp)
+                            .align(Alignment.BottomEnd)
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -86,13 +93,6 @@ fun BookCard(
                     modifier = Modifier
                 )
             }
-
-            FileTypeTag(
-                fileType = book.fileType,
-                modifier = Modifier
-                    .padding(horizontal = 6.dp, vertical = 6.dp)
-                    .align(Alignment.TopStart)
-            )
 
             if (isSelectionMode) {
                 SelectionIndicator(
