@@ -1,22 +1,30 @@
-package com.trackbool.bookreader.data.local
+package com.trackbool.bookreader.data.repository
 
 import android.content.Context
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.model.BookFileType
+import com.trackbool.bookreader.domain.repository.BookFileRepository
 import com.trackbool.bookreader.domain.source.BookSource
 import java.io.File
 import java.io.FileOutputStream
 import java.util.UUID
 
-class FileManager(private val context: Context) {
+class BookFileRepositoryImpl(
+    private val context: Context
+) : BookFileRepository {
 
-    data class ImportResult(
-        val filePath: String,
-        val fileType: BookFileType,
-        val fileName: String
-    )
+    override suspend fun importBooks(bookSources: List<BookSource>): Result<List<BookFileRepository.ImportResult>> {
+        return try {
+            val results = bookSources.mapNotNull { bookSource ->
+                importBook(bookSource).getOrNull()
+            }
+            Result.success(results)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 
-    fun importBook(bookSource: BookSource): Result<ImportResult> {
+    private fun importBook(bookSource: BookSource): Result<BookFileRepository.ImportResult> {
         return try {
             val fileName = bookSource.getFileName() ?: "unknown_${UUID.randomUUID()}"
             val extension = getFileExtension(fileName)
@@ -41,7 +49,7 @@ class FileManager(private val context: Context) {
             val relativePath = "$BOOKS_DIR/$newFileName"
 
             Result.success(
-                ImportResult(
+                BookFileRepository.ImportResult(
                     filePath = relativePath,
                     fileType = fileType,
                     fileName = fileName
@@ -52,22 +60,7 @@ class FileManager(private val context: Context) {
         }
     }
 
-    fun importBooks(bookSources: List<BookSource>): Result<List<ImportResult>> {
-        return try {
-            val results = bookSources.mapNotNull { bookSource ->
-                importBook(bookSource).getOrNull()
-            }
-            Result.success(results)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    private fun getFileExtension(fileName: String): String {
-        return fileName.substringAfterLast('.', "").lowercase()
-    }
-
-    fun deleteBookFiles(books: List<Book>): Result<Unit> {
+    override suspend fun deleteBookFiles(books: List<Book>): Result<Unit> {
         return try {
             books.forEach { book ->
                 val file = File(context.filesDir, book.filePath)
@@ -86,11 +79,11 @@ class FileManager(private val context: Context) {
         }
     }
 
-    fun getBookFile(relativePath: String): File {
+    override fun getBookFile(relativePath: String): File {
         return File(context.filesDir, relativePath)
     }
 
-    fun saveCoverImage(coverBytes: ByteArray): String {
+    override suspend fun saveCoverImage(coverBytes: ByteArray): String {
         val coversDir = File(context.filesDir, COVERS_DIR)
         if (!coversDir.exists()) {
             coversDir.mkdirs()
@@ -101,6 +94,10 @@ class FileManager(private val context: Context) {
         coverFile.writeBytes(coverBytes)
 
         return "$COVERS_DIR/$fileName"
+    }
+
+    private fun getFileExtension(fileName: String): String {
+        return fileName.substringAfterLast('.', "").lowercase()
     }
 
     private fun getFileType(extension: String): BookFileType {

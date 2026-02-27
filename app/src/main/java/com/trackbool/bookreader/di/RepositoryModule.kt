@@ -2,8 +2,9 @@ package com.trackbool.bookreader.di
 
 import android.content.Context
 import com.trackbool.bookreader.data.local.BookDao
-import com.trackbool.bookreader.data.local.FileManager
+import com.trackbool.bookreader.data.repository.BookFileRepositoryImpl
 import com.trackbool.bookreader.data.repository.BookRepositoryImpl
+import com.trackbool.bookreader.domain.repository.BookFileRepository
 import com.trackbool.bookreader.domain.repository.BookRepository
 import dagger.Module
 import dagger.Provides
@@ -18,10 +19,10 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideFileManager(
+    fun provideBookFileRepository(
         @ApplicationContext context: Context
-    ): FileManager {
-        return FileManager(context)
+    ): BookFileRepository {
+        return BookFileRepositoryImpl(context)
     }
 
     @Provides

@@ -1,28 +1,28 @@
 package com.trackbool.bookreader.domain.usecase
 
-import com.trackbool.bookreader.data.local.FileManager
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.model.DocumentMetadata
 import com.trackbool.bookreader.domain.parser.DocumentParserFactory
+import com.trackbool.bookreader.domain.repository.BookFileRepository
 import com.trackbool.bookreader.domain.source.BookSource
 
 class ImportBooksUseCase(
-    private val fileManager: FileManager,
+    private val bookFileRepository: BookFileRepository,
     private val parserFactory: DocumentParserFactory
 ) {
     suspend operator fun invoke(
         bookSources: List<BookSource>
     ): Result<List<Book>> {
         return try {
-            val importResults = fileManager.importBooks(bookSources)
+            val importResults = bookFileRepository.importBooks(bookSources)
                 .getOrElse { return Result.failure(it) }
 
             val books = importResults.mapIndexed { _, importResult ->
                 val metadata = extractMetadata(importResult.filePath, importResult.fileType)
 
                 val coverPath = metadata?.coverBytes?.let { coverBytes ->
-                    fileManager.saveCoverImage(coverBytes)
+                    bookFileRepository.saveCoverImage(coverBytes)
                 }
 
                 Book(
@@ -43,7 +43,7 @@ class ImportBooksUseCase(
     }
 
     private fun extractMetadata(filePath: String, fileType: BookFileType): DocumentMetadata? {
-        val file = fileManager.getBookFile(filePath)
+        val file = bookFileRepository.getBookFile(filePath)
         return parserFactory.getParser(fileType)?.parse(file)
     }
 }
