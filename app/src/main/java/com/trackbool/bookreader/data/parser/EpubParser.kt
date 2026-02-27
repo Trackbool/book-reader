@@ -1,6 +1,5 @@
 package com.trackbool.bookreader.data.parser
 
-import android.content.Context
 import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.model.DocumentMetadata
 import com.trackbool.bookreader.domain.parser.DocumentParser
@@ -8,12 +7,9 @@ import org.jsoup.Jsoup
 import org.jsoup.parser.Parser
 import java.io.File
 import java.io.FileInputStream
-import java.util.UUID
 import java.util.zip.ZipInputStream
 
-class EpubParser(
-    private val context: Context
-) : DocumentParser {
+class EpubParser : DocumentParser {
 
     override fun parse(file: File): DocumentMetadata? {
         return try {
@@ -53,13 +49,13 @@ class EpubParser(
 
         val metadata = parseOpfMetadata(opfContent.toString(Charsets.UTF_8))
 
-        val coverPath = extractCover(
+        val coverBytes = extractCover(
             opfContent.toString(Charsets.UTF_8),
             files,
             opfDirectory
         )
 
-        return metadata.copy(coverPath = coverPath)
+        return metadata.copy(coverBytes = coverBytes)
     }
 
     private fun extractOpfPath(containerXml: String): String? {
@@ -91,7 +87,7 @@ class EpubParser(
         opfContent: String,
         files: Map<String, ByteArray>,
         opfDirectory: String
-    ): String? {
+    ): ByteArray? {
         val doc = Jsoup.parse(opfContent, "", Parser.xmlParser())
 
         val metaCover = doc.selectFirst("meta[name=cover]")
@@ -111,25 +107,6 @@ class EpubParser(
             coverHref
         }.replace("//", "/")
 
-        val coverData = files[coverPath] ?: return null
-
-        return saveCoverImage(coverData)
-    }
-
-    private fun saveCoverImage(coverData: ByteArray): String {
-        val coversDir = File(context.filesDir, COVERS_DIR)
-        if (!coversDir.exists()) {
-            coversDir.mkdirs()
-        }
-
-        val fileName = "${UUID.randomUUID()}.jpg"
-        val coverFile = File(coversDir, fileName)
-        coverFile.writeBytes(coverData)
-
-        return "$COVERS_DIR/$fileName"
-    }
-
-    companion object {
-        private const val COVERS_DIR = "covers"
+        return files[coverPath]
     }
 }

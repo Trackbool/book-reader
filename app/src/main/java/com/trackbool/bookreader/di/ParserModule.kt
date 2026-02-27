@@ -29,10 +29,8 @@ abstract class ParserModule {
     companion object {
         @Provides
         @Singleton
-        fun provideEpubParser(
-            @ApplicationContext context: Context
-        ): EpubParser {
-            return EpubParser(context)
+        fun provideEpubParser(): EpubParser {
+            return EpubParser()
         }
 
         @Provides

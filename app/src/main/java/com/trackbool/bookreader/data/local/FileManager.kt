@@ -90,6 +90,19 @@ class FileManager(private val context: Context) {
         return File(context.filesDir, relativePath)
     }
 
+    fun saveCoverImage(coverBytes: ByteArray): String {
+        val coversDir = File(context.filesDir, COVERS_DIR)
+        if (!coversDir.exists()) {
+            coversDir.mkdirs()
+        }
+
+        val fileName = "${UUID.randomUUID()}.jpg"
+        val coverFile = File(coversDir, fileName)
+        coverFile.writeBytes(coverBytes)
+
+        return "$COVERS_DIR/$fileName"
+    }
+
     private fun getFileType(extension: String): BookFileType {
         return when (extension) {
             "pdf" -> BookFileType.PDF
@@ -100,5 +113,6 @@ class FileManager(private val context: Context) {
 
     companion object {
         private const val BOOKS_DIR = "books"
+        private const val COVERS_DIR = "covers"
     }
 }
