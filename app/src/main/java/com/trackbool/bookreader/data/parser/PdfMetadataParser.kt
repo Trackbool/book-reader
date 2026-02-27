@@ -2,11 +2,11 @@ package com.trackbool.bookreader.data.parser
 
 import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.model.DocumentMetadata
-import com.trackbool.bookreader.domain.parser.DocumentParser
+import com.trackbool.bookreader.domain.parser.metadata.DocumentMetadataParser
 import java.io.File
 import javax.inject.Inject
 
-class PdfParser @Inject constructor() : DocumentParser {
+class PdfMetadataParser @Inject constructor() : DocumentMetadataParser {
 
     override fun parse(file: File): DocumentMetadata? {
         return null

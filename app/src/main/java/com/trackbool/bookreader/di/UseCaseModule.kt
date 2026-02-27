@@ -1,7 +1,6 @@
 package com.trackbool.bookreader.di
 
-import com.trackbool.bookreader.data.repository.BookFileRepositoryImpl
-import com.trackbool.bookreader.domain.parser.DocumentParserFactory
+import com.trackbool.bookreader.domain.parser.metadata.DocumentMetadataParserFactory
 import com.trackbool.bookreader.domain.repository.BookFileRepository
 import com.trackbool.bookreader.domain.repository.BookRepository
 import com.trackbool.bookreader.domain.usecase.AddBooksUseCase
@@ -58,7 +57,7 @@ object UseCaseModule {
     @ViewModelScoped
     fun provideImportBooksUseCase(
         bookFileRepository: BookFileRepository,
-        parserFactory: DocumentParserFactory
+        parserFactory: DocumentMetadataParserFactory
     ): ImportBooksUseCase {
         return ImportBooksUseCase(bookFileRepository, parserFactory)
     }

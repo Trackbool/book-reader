@@ -3,13 +3,13 @@ package com.trackbool.bookreader.domain.usecase
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.model.DocumentMetadata
-import com.trackbool.bookreader.domain.parser.DocumentParserFactory
+import com.trackbool.bookreader.domain.parser.metadata.DocumentMetadataParserFactory
 import com.trackbool.bookreader.domain.repository.BookFileRepository
 import com.trackbool.bookreader.domain.source.BookSource
 
 class ImportBooksUseCase(
     private val bookFileRepository: BookFileRepository,
-    private val parserFactory: DocumentParserFactory
+    private val parserFactory: DocumentMetadataParserFactory
 ) {
     suspend operator fun invoke(
         bookSources: List<BookSource>

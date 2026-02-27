@@ -2,14 +2,14 @@ package com.trackbool.bookreader.data.parser
 
 import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.model.DocumentMetadata
-import com.trackbool.bookreader.domain.parser.DocumentParser
+import com.trackbool.bookreader.domain.parser.metadata.DocumentMetadataParser
 import org.jsoup.Jsoup
 import org.jsoup.parser.Parser
 import java.io.File
 import java.io.FileInputStream
 import java.util.zip.ZipInputStream
 
-class EpubParser : DocumentParser {
+class EpubMetadataParser : DocumentMetadataParser {
 
     override fun parse(file: File): DocumentMetadata? {
         return try {

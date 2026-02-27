@@ -1,19 +1,16 @@
 package com.trackbool.bookreader.di
 
-import android.content.Context
-import com.trackbool.bookreader.data.parser.DocumentParserFactoryImpl
-import com.trackbool.bookreader.data.parser.EpubParser
-import com.trackbool.bookreader.data.parser.PdfParser
+import com.trackbool.bookreader.data.parser.DocumentMetadataParserFactoryImpl
+import com.trackbool.bookreader.data.parser.EpubMetadataParser
+import com.trackbool.bookreader.data.parser.PdfMetadataParser
 import com.trackbool.bookreader.domain.model.BookFileType
-import com.trackbool.bookreader.domain.parser.DocumentParser
-import com.trackbool.bookreader.domain.parser.DocumentParserFactory
+import com.trackbool.bookreader.domain.parser.metadata.DocumentMetadataParser
+import com.trackbool.bookreader.domain.parser.metadata.DocumentMetadataParserFactory
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import javax.inject.Inject
 import javax.inject.Singleton
 
 @Module
@@ -23,28 +20,28 @@ abstract class ParserModule {
     @Binds
     @Singleton
     abstract fun bindDocumentParserFactory(
-        factoryImpl: DocumentParserFactoryImpl
-    ): DocumentParserFactory
+        factoryImpl: DocumentMetadataParserFactoryImpl
+    ): DocumentMetadataParserFactory
 
     companion object {
         @Provides
         @Singleton
-        fun provideEpubParser(): EpubParser {
-            return EpubParser()
+        fun provideEpubParser(): EpubMetadataParser {
+            return EpubMetadataParser()
         }
 
         @Provides
         @Singleton
-        fun providePdfParser(): PdfParser {
-            return PdfParser()
+        fun providePdfParser(): PdfMetadataParser {
+            return PdfMetadataParser()
         }
 
         @Provides
         @Singleton
         fun provideParsers(
-            epubParser: EpubParser,
-            pdfParser: PdfParser
-        ): Map<BookFileType, DocumentParser> {
+            epubParser: EpubMetadataParser,
+            pdfParser: PdfMetadataParser
+        ): Map<BookFileType, DocumentMetadataParser> {
             return mapOf(
                 BookFileType.EPUB to epubParser,
                 BookFileType.PDF to pdfParser
