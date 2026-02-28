@@ -3,6 +3,7 @@ package com.trackbool.bookreader.data.repository
 import android.content.Context
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.model.BookFileType
+import com.trackbool.bookreader.domain.model.Cover
 import com.trackbool.bookreader.domain.repository.BookFileRepository
 import com.trackbool.bookreader.domain.source.BookSource
 import java.io.File
@@ -83,15 +84,15 @@ class BookFileRepositoryImpl(
         return File(context.filesDir, relativePath)
     }
 
-    override suspend fun saveCoverImage(coverBytes: ByteArray): String {
+    override suspend fun saveCoverImage(cover: Cover): String {
         val coversDir = File(context.filesDir, COVERS_DIR)
         if (!coversDir.exists()) {
             coversDir.mkdirs()
         }
 
-        val fileName = "${UUID.randomUUID()}.jpg"
+        val fileName = "${UUID.randomUUID()}.${cover.extension}"
         val coverFile = File(coversDir, fileName)
-        coverFile.writeBytes(coverBytes)
+        coverFile.writeBytes(cover.bytes)
 
         return "$COVERS_DIR/$fileName"
     }

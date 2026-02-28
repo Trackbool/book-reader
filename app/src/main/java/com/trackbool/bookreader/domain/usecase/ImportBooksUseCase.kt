@@ -21,8 +21,8 @@ class ImportBooksUseCase(
             val books = importResults.mapIndexed { _, importResult ->
                 val metadata = extractMetadata(importResult.filePath, importResult.fileType)
 
-                val coverPath = metadata?.coverBytes?.let { coverBytes ->
-                    bookFileRepository.saveCoverImage(coverBytes)
+                val coverPath = metadata?.cover?.let { cover ->
+                    bookFileRepository.saveCoverImage(cover)
                 }
 
                 Book(
