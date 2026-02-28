@@ -74,8 +74,7 @@ class EpubContentParser : DocumentContentParser {
             val chapterContent = zip.readEpubEntryAsString(resolvePath(opfDirectory, href)) ?: ""
             ChapterMetadata(
                 title        = extractChapterTitle(chapterContent),
-                chapterIndex = index,
-                href         = href
+                chapterIndex = index
             )
         }
     }
