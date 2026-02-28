@@ -38,7 +38,7 @@ class EpubContentParser : DocumentContentParser {
         val opfDirectory = opfPath.substringBeforeLast("/", "")
 
         return DocumentContent(
-            chapters = parseChapters(opfContent, zip, opfDirectory),
+            chapters = parseChapters(opfDirectory, opfContent, zip),
             language = extractLanguage(opfContent)
         )
     }
@@ -59,9 +59,9 @@ class EpubContentParser : DocumentContentParser {
     }
 
     private fun parseChapters(
+        opfDirectory: String,
         opfContent: String,
-        zip: ZipFile,
-        opfDirectory: String
+        zip: ZipFile
     ): List<ChapterMetadata> {
         val doc = Jsoup.parse(opfContent, "", Parser.xmlParser())
         val spine = doc.select("spine itemref")
