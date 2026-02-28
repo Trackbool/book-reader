@@ -1,5 +1,9 @@
 package com.trackbool.bookreader.data.parser.metadata
 
+import com.trackbool.bookreader.data.parser.extractOpfPath
+import com.trackbool.bookreader.data.parser.readEpubEntryAsBytes
+import com.trackbool.bookreader.data.parser.readEpubEntryAsString
+import com.trackbool.bookreader.data.parser.resolvePath
 import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.model.Cover
 import com.trackbool.bookreader.domain.model.DocumentMetadata
@@ -20,31 +24,17 @@ class EpubMetadataParser : DocumentMetadataParser {
         }
     }
 
-    override fun supports(fileType: BookFileType): Boolean {
-        return fileType == BookFileType.EPUB
-    }
+    override fun supports(fileType: BookFileType) = fileType == BookFileType.EPUB
 
     private fun parseEpub(zip: ZipFile): DocumentMetadata {
-        val containerXml = zip.readEntryAsString("META-INF/container.xml")
-            ?: return DocumentMetadata()
-
-        val opfPath = extractOpfPath(containerXml)
-            ?: return DocumentMetadata()
-
-        val opfContent = zip.readEntryAsString(opfPath)
-            ?: return DocumentMetadata()
-
+        val opfPath = zip.extractOpfPath() ?: return DocumentMetadata()
+        val opfContent = zip.readEpubEntryAsString(opfPath) ?: return DocumentMetadata()
         val opfDirectory = opfPath.substringBeforeLast("/", "")
 
         val metadata = parseOpfMetadata(opfContent)
         val cover = extractCover(opfContent, zip, opfDirectory)
 
         return metadata.copy(cover = cover)
-    }
-
-    private fun extractOpfPath(containerXml: String): String? {
-        val doc = Jsoup.parse(containerXml, "", Parser.xmlParser())
-        return doc.selectFirst("rootfile")?.attr("full-path")
     }
 
     private fun parseOpfMetadata(opfContent: String): DocumentMetadata {
@@ -127,7 +117,7 @@ class EpubMetadataParser : DocumentMetadataParser {
             val item = doc.selectFirst("manifest item[id=$coverId]")
             val href = item?.attr("href")
             if (href != null) {
-                val bytes = zip.readEntryAsBytes(resolvePath(opfDirectory, href))
+                val bytes = zip.readEpubEntryAsBytes(resolvePath(opfDirectory, href))
                 return buildCover(bytes, item.attr("media-type"))
             }
         }
@@ -136,7 +126,7 @@ class EpubMetadataParser : DocumentMetadataParser {
         val epub3Item = doc.selectFirst("manifest item[properties=cover-image]")
         val epub3Href = epub3Item?.attr("href")
         if (epub3Href != null) {
-            val bytes = zip.readEntryAsBytes(resolvePath(opfDirectory, epub3Href))
+            val bytes = zip.readEpubEntryAsBytes(resolvePath(opfDirectory, epub3Href))
             return buildCover(bytes, epub3Item.attr("media-type"))
         }
 
@@ -144,12 +134,12 @@ class EpubMetadataParser : DocumentMetadataParser {
         val guideHref = doc.selectFirst("guide reference[type=cover]")?.attr("href")
         if (guideHref != null) {
             val xhtmlPath = resolvePath(opfDirectory, guideHref)
-            val xhtmlContent = zip.readEntryAsString(xhtmlPath)
+            val xhtmlContent = zip.readEpubEntryAsString(xhtmlPath)
             if (xhtmlContent != null) {
                 val imgSrc = Jsoup.parse(xhtmlContent).selectFirst("img")?.attr("src")
                 if (imgSrc != null) {
                     val xhtmlDir = xhtmlPath.substringBeforeLast("/", "")
-                    val bytes = zip.readEntryAsBytes(resolvePath(xhtmlDir, imgSrc))
+                    val bytes = zip.readEpubEntryAsBytes(resolvePath(xhtmlDir, imgSrc))
                     return buildCover(bytes)
                 }
             }
@@ -179,32 +169,5 @@ class EpubMetadataParser : DocumentMetadataParser {
         bytes[0] == 0x47.toByte() && bytes[1] == 0x49.toByte() -> "image/gif"
         bytes[0] == 0x52.toByte() && bytes[3] == 0x57.toByte() -> "image/webp"
         else                                                     -> null
-    }
-
-    private fun resolvePath(directory: String, href: String): String {
-        return if (directory.isNotEmpty()) "$directory/$href" else href
-    }
-
-    private fun ZipFile.readEntryAsString(path: String): String? {
-        val entry = getEntry(path) ?: return null
-        val bytes = getInputStream(entry).use { it.readBytes() }
-        val encoding = detectXmlEncoding(bytes) ?: Charsets.UTF_8
-        return bytes.toString(encoding)
-    }
-
-    private fun ZipFile.readEntryAsBytes(path: String): ByteArray? {
-        val entry = getEntry(path) ?: return null
-        return getInputStream(entry).use { it.readBytes() }
-    }
-
-    /**
-     * Detects the encoding declared in the XML header.
-     *
-     * Example:
-     * <?xml version="1.0" encoding="ISO-8859-1"?> */
-    private fun detectXmlEncoding(bytes: ByteArray): java.nio.charset.Charset? {
-        val header = bytes.take(200).toByteArray().toString(Charsets.US_ASCII)
-        val match = Regex("""encoding=["']([^"']+)["']""").find(header) ?: return null
-        return runCatching { charset(match.groupValues[1]) }.getOrNull()
     }
 }

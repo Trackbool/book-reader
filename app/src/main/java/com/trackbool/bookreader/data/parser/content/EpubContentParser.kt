@@ -1,5 +1,8 @@
 package com.trackbool.bookreader.data.parser.content
 
+import com.trackbool.bookreader.data.parser.extractOpfPath
+import com.trackbool.bookreader.data.parser.readEpubEntryAsString
+import com.trackbool.bookreader.data.parser.resolvePath
 import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.model.ChapterMetadata
 import com.trackbool.bookreader.domain.model.DocumentContent
@@ -7,163 +10,85 @@ import com.trackbool.bookreader.domain.parser.content.DocumentContentParser
 import org.jsoup.Jsoup
 import org.jsoup.parser.Parser
 import java.io.File
-import java.io.FileInputStream
-import java.util.zip.ZipInputStream
+import java.util.zip.ZipFile
 
 class EpubContentParser : DocumentContentParser {
 
-    private var cachedFiles: Map<String, ByteArray>? = null
-    private var cachedOpfDirectory: String? = null
-
     override fun parse(file: File): DocumentContent? {
         return try {
-            parseEpub(file)
+            ZipFile(file).use { zip -> parseEpub(zip) }
         } catch (e: Exception) {
             null
         }
     }
 
     override fun loadChapterContent(file: File, chapterIndex: Int): String {
-        ensureFileLoaded(file)
-
-        val files = cachedFiles ?: return ""
-        val opfDirectory = cachedOpfDirectory ?: return ""
-
-        val (spine, manifest) = loadSpineAndManifest(files) ?: return ""
-
-        val itemref = spine.getOrNull(chapterIndex) ?: return ""
-        val idref = itemref.attr("idref")
-        val manifestItem = manifest[idref] ?: return ""
-
-        val href = manifestItem.attr("href")
-        val chapterPath = if (opfDirectory.isNotEmpty()) {
-            "$opfDirectory/$href"
-        } else {
-            href
-        }.replace("//", "/")
-
-        return files[chapterPath]?.toString(Charsets.UTF_8) ?: ""
-    }
-
-    override fun supports(fileType: BookFileType): Boolean {
-        return fileType == BookFileType.EPUB
-    }
-
-    private fun ensureFileLoaded(file: File) {
-        if (cachedFiles != null) return
-
-        val files = mutableMapOf<String, ByteArray>()
-
-        ZipInputStream(FileInputStream(file)).use { zis ->
-            var entry = zis.nextEntry
-            while (entry != null) {
-                if (!entry.isDirectory) {
-                    files[entry.name] = zis.readBytes()
-                }
-                entry = zis.nextEntry
-            }
+        return try {
+            ZipFile(file).use { zip -> readChapterContent(zip, chapterIndex) }
+        } catch (e: Exception) {
+            ""
         }
-
-        val containerXml = files["META-INF/container.xml"] ?: return
-        val opfPath = extractOpfPath(containerXml.toString(Charsets.UTF_8)) ?: return
-
-        cachedFiles = files
-        cachedOpfDirectory = opfPath.substringBeforeLast("/", "")
     }
 
-    private fun parseEpub(file: File): DocumentContent {
-        ensureFileLoaded(file)
+    override fun supports(fileType: BookFileType) = fileType == BookFileType.EPUB
 
-        val files = cachedFiles ?: return DocumentContent(chapters = emptyList())
-
-        val containerXml = files["META-INF/container.xml"]
-            ?: return DocumentContent(chapters = emptyList())
-
-        val opfPath = extractOpfPath(containerXml.toString(Charsets.UTF_8))
-            ?: return DocumentContent(chapters = emptyList())
-
-        val opfContent = files[opfPath]
-            ?: return DocumentContent(chapters = emptyList())
-
+    private fun parseEpub(zip: ZipFile): DocumentContent {
+        val opfPath = zip.extractOpfPath() ?: return DocumentContent(chapters = emptyList())
+        val opfContent = zip.readEpubEntryAsString(opfPath) ?: return DocumentContent(chapters = emptyList())
         val opfDirectory = opfPath.substringBeforeLast("/", "")
-        cachedOpfDirectory = opfDirectory
-
-        val chapters = parseChapters(opfContent.toString(Charsets.UTF_8), files, opfDirectory)
-        val language = extractLanguage(opfContent.toString(Charsets.UTF_8))
 
         return DocumentContent(
-            chapters = chapters,
-            language = language
+            chapters = parseChapters(opfContent, zip, opfDirectory),
+            language = extractLanguage(opfContent)
         )
     }
 
-    private fun loadSpineAndManifest(files: Map<String, ByteArray>): Pair<List<org.jsoup.nodes.Element>, Map<String, org.jsoup.nodes.Element>>? {
-        val containerXml = files["META-INF/container.xml"] ?: return null
-        val opfPath = extractOpfPath(containerXml.toString(Charsets.UTF_8)) ?: return null
-        val opfContent = files[opfPath] ?: return null
+    private fun readChapterContent(zip: ZipFile, chapterIndex: Int): String {
+        val opfPath = zip.extractOpfPath() ?: return ""
+        val opfContent = zip.readEpubEntryAsString(opfPath) ?: return ""
+        val opfDirectory = opfPath.substringBeforeLast("/", "")
 
-        val doc = Jsoup.parse(opfContent.toString(Charsets.UTF_8), "", Parser.xmlParser())
+        val doc = Jsoup.parse(opfContent, "", Parser.xmlParser())
         val spine = doc.select("spine itemref")
         val manifest = doc.select("manifest item").associateBy { it.id() }
 
-        return Pair(spine, manifest)
-    }
+        val idref = spine.getOrNull(chapterIndex)?.attr("idref") ?: return ""
+        val href = manifest[idref]?.attr("href") ?: return ""
 
-    private fun extractOpfPath(containerXml: String): String? {
-        val doc = Jsoup.parse(containerXml, "", Parser.xmlParser())
-        val rootFile = doc.selectFirst("rootfile")
-        return rootFile?.attr("full-path")
-    }
-
-    private fun extractLanguage(opfContent: String): String? {
-        val doc = Jsoup.parse(opfContent, "", Parser.xmlParser())
-        return doc.selectFirst("dc|language, language")?.text()
+        return zip.readEpubEntryAsString(resolvePath(opfDirectory, href)) ?: ""
     }
 
     private fun parseChapters(
         opfContent: String,
-        files: Map<String, ByteArray>,
+        zip: ZipFile,
         opfDirectory: String
     ): List<ChapterMetadata> {
         val doc = Jsoup.parse(opfContent, "", Parser.xmlParser())
-
         val spine = doc.select("spine itemref")
         val manifest = doc.select("manifest item").associateBy { it.id() }
 
-        val chapters = mutableListOf<ChapterMetadata>()
-
-        spine.forEachIndexed { index, itemref ->
+        return spine.mapIndexedNotNull { index, itemref ->
             val idref = itemref.attr("idref")
-            val manifestItem = manifest[idref] ?: return@forEachIndexed
+            val href = manifest[idref]?.attr("href") ?: return@mapIndexedNotNull null
 
-            val href = manifestItem.attr("href")
-            val chapterPath = if (opfDirectory.isNotEmpty()) {
-                "$opfDirectory/$href"
-            } else {
-                href
-            }.replace("//", "/")
-
-            val chapterContent = files[chapterPath]?.toString(Charsets.UTF_8) ?: ""
-            val title = extractChapterTitle(chapterContent, index)
-
-            chapters.add(
-                ChapterMetadata(
-                    title = title,
-                    chapterIndex = index,
-                    href = href
-                )
+            val chapterContent = zip.readEpubEntryAsString(resolvePath(opfDirectory, href)) ?: ""
+            ChapterMetadata(
+                title        = extractChapterTitle(chapterContent),
+                chapterIndex = index,
+                href         = href
             )
         }
-
-        return chapters
     }
 
-    private fun extractChapterTitle(htmlContent: String, fallbackIndex: Int): String {
-        val doc = Jsoup.parse(htmlContent)
-        val title = doc.selectFirst("title")?.text()
-            ?: doc.selectFirst("h1")?.text()
-            ?: doc.selectFirst("h2")?.text()
+    private fun extractLanguage(opfContent: String): String? {
+        return Jsoup.parse(opfContent, "", Parser.xmlParser())
+            .selectFirst("dc|language, language")?.text()
+    }
 
-        return title?.takeIf { it.isNotBlank() } ?: "Capítulo ${fallbackIndex + 1}"
+    private fun extractChapterTitle(htmlContent: String): String? {
+        val doc = Jsoup.parse(htmlContent)
+        return doc.selectFirst("title")?.text()?.takeIf { it.isNotBlank() }
+            ?: doc.selectFirst("h1")?.text()?.takeIf { it.isNotBlank() }
+            ?: doc.selectFirst("h2")?.text()?.takeIf { it.isNotBlank() }
     }
 }
