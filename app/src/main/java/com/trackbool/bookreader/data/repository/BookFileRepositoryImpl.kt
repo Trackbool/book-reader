@@ -29,7 +29,7 @@ class BookFileRepositoryImpl(
         return try {
             val fileName = bookSource.getFileName() ?: "unknown_${UUID.randomUUID()}"
             val extension = getFileExtension(fileName)
-            val fileType = getFileType(extension)
+            val fileType = BookFileType.fromExtension(extension)
 
             val uuid = UUID.randomUUID().toString()
             val newFileName = "$uuid.$extension"
@@ -99,10 +99,6 @@ class BookFileRepositoryImpl(
 
     private fun getFileExtension(fileName: String): String {
         return fileName.substringAfterLast('.', "").lowercase()
-    }
-
-    private fun getFileType(extension: String): BookFileType {
-        return BookFileType.fromExtension(extension)
     }
 
     companion object {
