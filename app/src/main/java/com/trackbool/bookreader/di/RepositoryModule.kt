@@ -5,6 +5,7 @@ import com.trackbool.bookreader.data.local.BookDao
 import com.trackbool.bookreader.data.repository.BookFileRepositoryImpl
 import com.trackbool.bookreader.data.repository.BookRepositoryImpl
 import com.trackbool.bookreader.data.repository.ChapterRepositoryImpl
+import com.trackbool.bookreader.domain.parser.metadata.DocumentMetadataParserFactory
 import com.trackbool.bookreader.domain.repository.BookFileRepository
 import com.trackbool.bookreader.domain.repository.BookRepository
 import com.trackbool.bookreader.domain.repository.ChapterRepository
@@ -23,9 +24,10 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideBookFileRepository(
-        @ApplicationContext context: Context
+        @ApplicationContext context: Context,
+        parserFactory: DocumentMetadataParserFactory
     ): BookFileRepository {
-        return BookFileRepositoryImpl(context)
+        return BookFileRepositoryImpl(context, parserFactory)
     }
 
     @Provides

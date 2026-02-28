@@ -4,6 +4,8 @@ import android.content.Context
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.model.Cover
+import com.trackbool.bookreader.domain.model.DocumentMetadata
+import com.trackbool.bookreader.domain.parser.metadata.DocumentMetadataParserFactory
 import com.trackbool.bookreader.domain.repository.BookFileRepository
 import com.trackbool.bookreader.domain.source.BookSource
 import java.io.File
@@ -11,7 +13,8 @@ import java.io.FileOutputStream
 import java.util.UUID
 
 class BookFileRepositoryImpl(
-    private val context: Context
+    private val context: Context,
+    private val parserFactory: DocumentMetadataParserFactory
 ) : BookFileRepository {
 
     override suspend fun importBooks(bookSources: List<BookSource>): Result<List<BookFileRepository.ImportResult>> {
@@ -80,10 +83,6 @@ class BookFileRepositoryImpl(
         }
     }
 
-    override fun getBookFile(relativePath: String): File {
-        return File(context.filesDir, relativePath)
-    }
-
     override suspend fun saveCoverImage(cover: Cover): String {
         val coversDir = File(context.filesDir, COVERS_DIR)
         if (!coversDir.exists()) {
@@ -95,6 +94,11 @@ class BookFileRepositoryImpl(
         coverFile.writeBytes(cover.bytes)
 
         return "$COVERS_DIR/$fileName"
+    }
+
+    override suspend fun extractMetadata(filePath: String, fileType: BookFileType): DocumentMetadata? {
+        val file = File(context.filesDir, filePath)
+        return parserFactory.getParser(fileType)?.parse(file)
     }
 
     private fun getFileExtension(fileName: String): String {
