@@ -4,11 +4,11 @@ import android.content.Context
 import com.trackbool.bookreader.data.local.BookDao
 import com.trackbool.bookreader.data.repository.BookFileRepositoryImpl
 import com.trackbool.bookreader.data.repository.BookRepositoryImpl
-import com.trackbool.bookreader.data.repository.ChapterRepositoryImpl
-import com.trackbool.bookreader.domain.parser.metadata.DocumentMetadataParserFactory
+import com.trackbool.bookreader.data.repository.BookContentRepositoryImpl
+import com.trackbool.bookreader.domain.parser.metadata.BookMetadataParserFactory
 import com.trackbool.bookreader.domain.repository.BookFileRepository
 import com.trackbool.bookreader.domain.repository.BookRepository
-import com.trackbool.bookreader.domain.repository.ChapterRepository
+import com.trackbool.bookreader.domain.repository.BookContentRepository
 import com.trackbool.bookreader.domain.parser.content.BookContentParserFactory
 import dagger.Module
 import dagger.Provides
@@ -25,9 +25,10 @@ object RepositoryModule {
     @Singleton
     fun provideBookFileRepository(
         @ApplicationContext context: Context,
-        parserFactory: DocumentMetadataParserFactory
+        bookMetadataParserFactory: BookMetadataParserFactory,
+        bookContentParserFactory: BookContentParserFactory
     ): BookFileRepository {
-        return BookFileRepositoryImpl(context, parserFactory)
+        return BookFileRepositoryImpl(context, bookMetadataParserFactory, bookContentParserFactory)
     }
 
     @Provides
@@ -42,7 +43,7 @@ object RepositoryModule {
     @Singleton
     fun provideChapterRepository(
         parserFactory: BookContentParserFactory
-    ): ChapterRepository {
-        return ChapterRepositoryImpl(parserFactory)
+    ): BookContentRepository {
+        return BookContentRepositoryImpl(parserFactory)
     }
 }

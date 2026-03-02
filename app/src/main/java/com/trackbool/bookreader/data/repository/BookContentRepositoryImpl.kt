@@ -3,7 +3,7 @@ package com.trackbool.bookreader.data.repository
 import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.model.BookContent
 import com.trackbool.bookreader.domain.parser.content.BookContentParserFactory
-import com.trackbool.bookreader.domain.repository.ChapterRepository
+import com.trackbool.bookreader.domain.repository.BookContentRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -11,9 +11,9 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 
-class ChapterRepositoryImpl @Inject constructor(
+class BookContentRepositoryImpl @Inject constructor(
     private val parserFactory: BookContentParserFactory
-) : ChapterRepository {
+) : BookContentRepository {
 
     private val cacheMutex = Mutex()
     private var cachedFile: File? = null

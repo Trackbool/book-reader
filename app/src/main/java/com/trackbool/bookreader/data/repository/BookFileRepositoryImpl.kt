@@ -5,7 +5,8 @@ import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.model.Cover
 import com.trackbool.bookreader.domain.model.BookMetadata
-import com.trackbool.bookreader.domain.parser.metadata.DocumentMetadataParserFactory
+import com.trackbool.bookreader.domain.parser.content.BookContentParserFactory
+import com.trackbool.bookreader.domain.parser.metadata.BookMetadataParserFactory
 import com.trackbool.bookreader.domain.repository.BookFileRepository
 import com.trackbool.bookreader.domain.source.BookSource
 import java.io.File
@@ -14,7 +15,8 @@ import java.util.UUID
 
 class BookFileRepositoryImpl(
     private val context: Context,
-    private val parserFactory: DocumentMetadataParserFactory
+    private val metadataParserFactory: BookMetadataParserFactory,
+    private val contentParserFactory: BookContentParserFactory
 ) : BookFileRepository {
 
     override suspend fun importBooks(bookSources: List<BookSource>): Result<List<BookFileRepository.ImportResult>> {
@@ -98,7 +100,7 @@ class BookFileRepositoryImpl(
 
     override suspend fun extractMetadata(filePath: String, fileType: BookFileType): BookMetadata? {
         val file = File(context.filesDir, filePath)
-        return parserFactory.getParser(fileType)?.parse(file)
+        return metadataParserFactory.getParser(fileType)?.parse(file)
     }
 
     private fun getFileExtension(fileName: String): String {
