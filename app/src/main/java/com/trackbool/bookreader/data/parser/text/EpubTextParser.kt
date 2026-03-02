@@ -49,7 +49,7 @@ class EpubTextParser : TextParser {
                         "p" -> {
                             val annotated = buildAnnotatedStringFromElement(node)
                             if (annotated.text.isNotBlank()) {
-                                result.add(ReaderText.Text(annotated))
+                                result.add(ReaderText.Text(annotated + AnnotatedString("\n")))
                             }
                         }
 
@@ -59,7 +59,7 @@ class EpubTextParser : TextParser {
                                 heading = true
                             )
                             if (annotated.text.isNotBlank()) {
-                                result.add(ReaderText.Text(annotated))
+                                result.add(ReaderText.Text(annotated + AnnotatedString("\n")))
                             }
                         }
 
