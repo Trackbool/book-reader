@@ -4,7 +4,7 @@ import android.content.Context
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.model.Cover
-import com.trackbool.bookreader.domain.model.DocumentMetadata
+import com.trackbool.bookreader.domain.model.BookMetadata
 import com.trackbool.bookreader.domain.parser.metadata.DocumentMetadataParserFactory
 import com.trackbool.bookreader.domain.repository.BookFileRepository
 import com.trackbool.bookreader.domain.source.BookSource
@@ -96,7 +96,7 @@ class BookFileRepositoryImpl(
         return "$COVERS_DIR/$fileName"
     }
 
-    override suspend fun extractMetadata(filePath: String, fileType: BookFileType): DocumentMetadata? {
+    override suspend fun extractMetadata(filePath: String, fileType: BookFileType): BookMetadata? {
         val file = File(context.filesDir, filePath)
         return parserFactory.getParser(fileType)?.parse(file)
     }

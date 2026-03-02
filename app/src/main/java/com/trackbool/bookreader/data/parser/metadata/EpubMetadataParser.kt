@@ -6,7 +6,7 @@ import com.trackbool.bookreader.data.parser.readEpubEntryAsString
 import com.trackbool.bookreader.data.parser.resolvePath
 import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.model.Cover
-import com.trackbool.bookreader.domain.model.DocumentMetadata
+import com.trackbool.bookreader.domain.model.BookMetadata
 import com.trackbool.bookreader.domain.parser.metadata.DocumentMetadataParser
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
@@ -16,7 +16,7 @@ import java.util.zip.ZipFile
 
 class EpubMetadataParser : DocumentMetadataParser {
 
-    override fun parse(file: File): DocumentMetadata? {
+    override fun parse(file: File): BookMetadata? {
         return try {
             ZipFile(file).use { zip -> parseEpub(zip) }
         } catch (e: Exception) {
@@ -37,9 +37,9 @@ class EpubMetadataParser : DocumentMetadataParser {
      *
      * The OPF path is used to resolve all relative hrefs in the manifest.
      */
-    private fun parseEpub(zip: ZipFile): DocumentMetadata {
-        val opfPath = zip.extractOpfPath() ?: return DocumentMetadata()
-        val opfContent = zip.readEpubEntryAsString(opfPath) ?: return DocumentMetadata()
+    private fun parseEpub(zip: ZipFile): BookMetadata {
+        val opfPath = zip.extractOpfPath() ?: return BookMetadata()
+        val opfContent = zip.readEpubEntryAsString(opfPath) ?: return BookMetadata()
         val opfDirectory = opfPath.substringBeforeLast("/", "")
 
         val metadata = parseOpfMetadata(opfContent)
@@ -48,11 +48,11 @@ class EpubMetadataParser : DocumentMetadataParser {
         return metadata.copy(cover = cover)
     }
 
-    private fun parseOpfMetadata(opfContent: String): DocumentMetadata {
+    private fun parseOpfMetadata(opfContent: String): BookMetadata {
         val doc = Jsoup.parse(opfContent, "", Parser.xmlParser())
-        val metadata = doc.selectFirst("metadata") ?: return DocumentMetadata()
+        val metadata = doc.selectFirst("metadata") ?: return BookMetadata()
 
-        return DocumentMetadata(
+        return BookMetadata(
             title       = extractTitle(metadata),
             author      = extractAuthor(metadata),
             description = extractDescription(metadata)
