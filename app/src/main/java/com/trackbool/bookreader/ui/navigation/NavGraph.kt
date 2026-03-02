@@ -12,6 +12,7 @@ import androidx.navigation.navArgument
 import com.trackbool.bookreader.ui.screens.BookListScreen
 import com.trackbool.bookreader.ui.screens.BookReaderScreen
 import com.trackbool.bookreader.viewmodel.BookListViewModel
+import com.trackbool.bookreader.viewmodel.BookReaderViewModel
 
 @Composable
 fun AppNavGraph(
@@ -59,13 +60,20 @@ fun AppNavGraph(
         composable(
             route = AppScreens.BookReaderScreen.route,
             arguments = listOf(navArgument("bookId") { type = NavType.LongType })
-        ) { backStackEntry ->
-            val bookId = backStackEntry.arguments?.getLong("bookId") ?: return@composable
+        ) { _ ->
+            val viewModel: BookReaderViewModel = hiltViewModel()
+            val book by viewModel.book.collectAsState()
+            val content by viewModel.content.collectAsState()
+            val isLoading by viewModel.isLoading.collectAsState()
 
-            BookReaderScreen(
-                bookId = bookId,
-                onBack = { navController.popBackStack() }
-            )
+            book?.let {
+                BookReaderScreen(
+                    book = it,
+                    content = content,
+                    isLoading = isLoading,
+                    onBack = { navController.popBackStack() }
+                )
+            }
         }
     }
 }

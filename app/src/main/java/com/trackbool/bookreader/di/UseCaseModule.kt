@@ -1,11 +1,13 @@
 package com.trackbool.bookreader.di
 
+import com.trackbool.bookreader.domain.repository.BookContentRepository
 import com.trackbool.bookreader.domain.repository.BookFileRepository
 import com.trackbool.bookreader.domain.repository.BookMetadataRepository
 import com.trackbool.bookreader.domain.repository.BookRepository
 import com.trackbool.bookreader.domain.usecase.AddBooksUseCase
 import com.trackbool.bookreader.domain.usecase.DeleteBooksUseCase
 import com.trackbool.bookreader.domain.usecase.GetAllBooksUseCase
+import com.trackbool.bookreader.domain.usecase.GetBookContentUseCase
 import com.trackbool.bookreader.domain.usecase.GetBooksInProgressUseCase
 import com.trackbool.bookreader.domain.usecase.GetCompletedBooksUseCase
 import com.trackbool.bookreader.domain.usecase.ImportBooksUseCase
@@ -76,5 +78,13 @@ object UseCaseModule {
         repository: BookRepository
     ): GetCompletedBooksUseCase {
         return GetCompletedBooksUseCase(repository)
+    }
+
+    @Provides
+    @ViewModelScoped
+    fun provideGetBookContentUseCase(
+        repository: BookContentRepository
+    ): GetBookContentUseCase {
+        return GetBookContentUseCase(repository)
     }
 }
