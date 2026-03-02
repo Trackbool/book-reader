@@ -6,11 +6,13 @@ import com.trackbool.bookreader.data.parser.content.PdfContentParser
 import com.trackbool.bookreader.data.parser.metadata.BookMetadataParserFactoryImpl
 import com.trackbool.bookreader.data.parser.metadata.EpubMetadataParser
 import com.trackbool.bookreader.data.parser.metadata.PdfMetadataParser
+import com.trackbool.bookreader.data.parser.text.TextParserFactoryImpl
 import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.parser.content.DocumentContentParser
 import com.trackbool.bookreader.domain.parser.content.BookContentParserFactory
 import com.trackbool.bookreader.domain.parser.metadata.DocumentMetadataParser
 import com.trackbool.bookreader.domain.parser.metadata.BookMetadataParserFactory
+import com.trackbool.bookreader.domain.parser.text.TextParserFactory
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -33,6 +35,12 @@ abstract class ParserModule {
     abstract fun bindDocumentContentParserFactory(
         factoryImpl: BookContentParserFactoryImpl
     ): BookContentParserFactory
+
+    @Binds
+    @Singleton
+    abstract fun bindTextParserFactory(
+        factoryImpl: TextParserFactoryImpl
+    ): TextParserFactory
 
     companion object {
         @Provides
