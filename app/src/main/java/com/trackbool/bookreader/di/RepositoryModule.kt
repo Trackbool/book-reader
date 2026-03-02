@@ -2,6 +2,7 @@ package com.trackbool.bookreader.di
 
 import android.content.Context
 import com.trackbool.bookreader.data.local.BookDao
+import com.trackbool.bookreader.data.repository.AndroidFileManager
 import com.trackbool.bookreader.data.repository.BookFileRepositoryImpl
 import com.trackbool.bookreader.data.repository.BookRepositoryImpl
 import com.trackbool.bookreader.data.repository.BookContentRepositoryImpl
@@ -12,6 +13,7 @@ import com.trackbool.bookreader.domain.repository.BookContentRepository
 import com.trackbool.bookreader.domain.parser.content.BookContentParserFactory
 import com.trackbool.bookreader.domain.parser.metadata.BookMetadataParserFactory
 import com.trackbool.bookreader.domain.repository.BookMetadataRepository
+import com.trackbool.bookreader.domain.repository.FileManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -25,10 +27,18 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideBookFileRepository(
+    fun provideFileManager(
         @ApplicationContext context: Context
+    ): FileManager {
+        return AndroidFileManager(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideBookFileRepository(
+        fileManager: FileManager
     ): BookFileRepository {
-        return BookFileRepositoryImpl(context)
+        return BookFileRepositoryImpl(fileManager)
     }
 
     @Provides
@@ -42,18 +52,19 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideBookMetadataRepository(
-        @ApplicationContext context: Context,
+        fileManager: FileManager,
         parserFactory: BookMetadataParserFactory
     ): BookMetadataRepository {
-        return BookMetadataRepositoryImpl(context, parserFactory)
+        return BookMetadataRepositoryImpl(fileManager, parserFactory)
     }
 
     @Provides
     @Singleton
     fun provideBookContentRepository(
+        fileManager: FileManager,
         parserFactory: BookContentParserFactory
     ): BookContentRepository {
-        return BookContentRepositoryImpl(parserFactory)
+        return BookContentRepositoryImpl(fileManager, parserFactory)
     }
 
 }

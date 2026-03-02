@@ -4,37 +4,39 @@ import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.model.BookContent
 import com.trackbool.bookreader.domain.parser.content.BookContentParserFactory
 import com.trackbool.bookreader.domain.repository.BookContentRepository
+import com.trackbool.bookreader.domain.repository.FileManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import java.io.File
 import javax.inject.Inject
 
-class BookContentRepositoryImpl @Inject constructor(
+class BookContentRepositoryImpl(
+    private val fileManager: FileManager,
     private val parserFactory: BookContentParserFactory
 ) : BookContentRepository {
 
     private val cacheMutex = Mutex()
-    private var cachedFile: File? = null
+    private var cachedFilePath: String? = null
     private var cachedContent: BookContent? = null
 
-    override suspend fun getContent(file: File): BookContent? {
+    override suspend fun getContent(filePath: String): BookContent? {
         return withContext(Dispatchers.IO) {
-            ensureContentLoaded(file)
+            ensureContentLoaded(filePath)
             cachedContent
         }
     }
 
     override fun invalidateCache() {
-        cachedFile = null
+        cachedFilePath = null
         cachedContent = null
     }
 
-    private suspend fun ensureContentLoaded(file: File) {
+    private suspend fun ensureContentLoaded(filePath: String) {
         cacheMutex.withLock {
-            if (cachedFile == null || cachedFile != file) {
-                cachedFile = file
+            if (cachedFilePath == null || cachedFilePath != filePath) {
+                cachedFilePath = filePath
+                val file = fileManager.getFile(filePath)
                 val fileType = BookFileType.fromExtension(file.extension)
                 val parser = parserFactory.getParser(fileType)
                 cachedContent = parser?.parse(file)

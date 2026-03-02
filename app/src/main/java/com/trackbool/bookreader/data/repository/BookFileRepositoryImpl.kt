@@ -1,20 +1,16 @@
 package com.trackbool.bookreader.data.repository
 
-import android.content.Context
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.model.Cover
-import com.trackbool.bookreader.domain.model.BookMetadata
-import com.trackbool.bookreader.domain.parser.content.BookContentParserFactory
-import com.trackbool.bookreader.domain.parser.metadata.BookMetadataParserFactory
 import com.trackbool.bookreader.domain.repository.BookFileRepository
+import com.trackbool.bookreader.domain.repository.FileManager
 import com.trackbool.bookreader.domain.source.BookSource
 import java.io.File
-import java.io.FileOutputStream
 import java.util.UUID
 
 class BookFileRepositoryImpl(
-    private val context: Context
+    private val fileManager: FileManager
 ) : BookFileRepository {
 
     override suspend fun importBooks(bookSources: List<BookSource>): Result<List<BookFileRepository.ImportResult>> {
@@ -37,20 +33,17 @@ class BookFileRepositoryImpl(
             val uuid = UUID.randomUUID().toString()
             val newFileName = "$uuid.$extension"
 
-            val booksDir = File(context.filesDir, BOOKS_DIR)
-            if (!booksDir.exists()) {
-                booksDir.mkdirs()
-            }
+            val booksDir = fileManager.ensureDirectoryExists(fileManager.getBooksDirectory())
 
-            val destFile = File(booksDir, newFileName)
+            val destFile = fileManager.createFile(booksDir, newFileName)
 
             bookSource.openInputStream().use { inputStream ->
-                FileOutputStream(destFile).use { outputStream ->
+                fileManager.openOutputStream(destFile).use { outputStream ->
                     inputStream.copyTo(outputStream)
                 }
             }
 
-            val relativePath = "$BOOKS_DIR/$newFileName"
+            val relativePath = "${fileManager.getBooksDirectory().name}/$newFileName"
 
             Result.success(
                 BookFileRepository.ImportResult(
@@ -67,14 +60,14 @@ class BookFileRepositoryImpl(
     override suspend fun deleteBookFiles(books: List<Book>): Result<Unit> {
         return try {
             books.forEach { book ->
-                val file = File(context.filesDir, book.filePath)
-                if (file.exists()) {
-                    file.delete()
+                val file = fileManager.getFile(book.filePath)
+                if (fileManager.exists(file)) {
+                    fileManager.delete(file)
                 }
 
-                val cover = File(context.filesDir, book.coverPath)
-                if (cover.exists()) {
-                    cover.delete()
+                val cover = fileManager.getFile(book.coverPath)
+                if (fileManager.exists(cover)) {
+                    fileManager.delete(cover)
                 }
             }
             Result.success(Unit)
@@ -84,24 +77,16 @@ class BookFileRepositoryImpl(
     }
 
     override suspend fun saveCoverImage(cover: Cover): String {
-        val coversDir = File(context.filesDir, COVERS_DIR)
-        if (!coversDir.exists()) {
-            coversDir.mkdirs()
-        }
+        val coversDir = fileManager.ensureDirectoryExists(fileManager.getCoversDirectory())
 
         val fileName = "${UUID.randomUUID()}.${cover.extension}"
-        val coverFile = File(coversDir, fileName)
+        val coverFile = fileManager.createFile(coversDir, fileName)
         coverFile.writeBytes(cover.bytes)
 
-        return "$COVERS_DIR/$fileName"
+        return "${fileManager.getCoversDirectory().name}/$fileName"
     }
 
     private fun getFileExtension(fileName: String): String {
         return fileName.substringAfterLast('.', "").lowercase()
-    }
-
-    companion object {
-        private const val BOOKS_DIR = "books"
-        private const val COVERS_DIR = "covers"
     }
 }
