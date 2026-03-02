@@ -63,13 +63,13 @@ fun AppNavGraph(
         ) { _ ->
             val viewModel: BookReaderViewModel = hiltViewModel()
             val book by viewModel.book.collectAsState()
-            val content by viewModel.content.collectAsState()
+            val chapters by viewModel.chapters.collectAsState()
             val isLoading by viewModel.isLoading.collectAsState()
 
             book?.let {
                 BookReaderScreen(
                     book = it,
-                    content = content,
+                    chapters = chapters,
                     isLoading = isLoading,
                     onBack = { navController.popBackStack() }
                 )

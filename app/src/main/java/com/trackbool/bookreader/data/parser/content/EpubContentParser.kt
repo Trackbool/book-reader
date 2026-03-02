@@ -7,13 +7,13 @@ import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.model.Chapter
 import com.trackbool.bookreader.domain.model.ChapterMetadata
 import com.trackbool.bookreader.domain.model.BookContent
-import com.trackbool.bookreader.domain.parser.content.DocumentContentParser
+import com.trackbool.bookreader.domain.parser.content.BookContentParser
 import org.jsoup.Jsoup
 import org.jsoup.parser.Parser
 import java.io.File
 import java.util.zip.ZipFile
 
-class EpubContentParser : DocumentContentParser {
+class EpubContentParser : BookContentParser {
 
     override fun parse(file: File): BookContent? {
         return try {

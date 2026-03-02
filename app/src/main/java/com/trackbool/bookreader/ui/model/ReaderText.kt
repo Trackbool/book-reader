@@ -1,6 +1,11 @@
-package com.trackbool.bookreader.domain.parser.text
+package com.trackbool.bookreader.ui.model
 
 import androidx.compose.ui.text.AnnotatedString
+
+data class ChapterView(
+    val title: String?,
+    val items: List<ReaderText>
+)
 
 sealed class ReaderText {
     data class Text(

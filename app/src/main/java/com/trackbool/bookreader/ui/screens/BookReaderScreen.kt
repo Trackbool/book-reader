@@ -1,14 +1,16 @@
 package com.trackbool.bookreader.ui.screens
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -18,16 +20,18 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.trackbool.bookreader.domain.model.Book
-import com.trackbool.bookreader.domain.model.BookContent
 import com.trackbool.bookreader.ui.components.LoadingIndicator
+import com.trackbool.bookreader.ui.model.ChapterView
+import com.trackbool.bookreader.ui.model.ReaderText
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookReaderScreen(
     book: Book,
-    content: BookContent?,
+    chapters: List<ChapterView>?,
     isLoading: Boolean,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
@@ -63,9 +67,9 @@ fun BookReaderScreen(
             isLoading -> {
                 LoadingIndicator(modifier = Modifier.padding(paddingValues))
             }
-            content != null -> {
+            chapters != null -> {
                 BookContent(
-                    content = content,
+                    chapters = chapters,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
@@ -87,17 +91,38 @@ fun BookReaderScreen(
 
 @Composable
 private fun BookContent(
-    content: BookContent,
+    chapters: List<ChapterView>,
     modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = modifier
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+    LazyColumn(
+        modifier = modifier,
+        contentPadding = PaddingValues(16.dp)
     ) {
-        Text(
-            text = content.chapters.joinToString("\n\n") { it.content },
-            style = MaterialTheme.typography.bodyLarge
-        )
+        itemsIndexed(
+            items = chapters,
+            key = { index, chapter -> index }
+        ) { index, chapter ->
+            if (index > 0) {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+            }
+            
+            chapter.items.forEach { readerText ->
+                when (readerText) {
+                    is ReaderText.Text -> {
+                        Text(
+                            text = readerText.annotatedString,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                    is ReaderText.Image -> {
+                        Text(
+                            text = "[Imagen: ${readerText.alt ?: readerText.src}]",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+        }
     }
 }

@@ -4,9 +4,10 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.trackbool.bookreader.domain.model.Book
-import com.trackbool.bookreader.domain.model.BookContent
 import com.trackbool.bookreader.domain.repository.BookRepository
 import com.trackbool.bookreader.domain.usecase.GetBookContentUseCase
+import com.trackbool.bookreader.ui.model.ChapterView
+import com.trackbool.bookreader.ui.parser.BookContentRenderParserFactory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +19,8 @@ import javax.inject.Inject
 class BookReaderViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val bookRepository: BookRepository,
-    private val getBookContentUseCase: GetBookContentUseCase
+    private val getBookContentUseCase: GetBookContentUseCase,
+    private val bookContentRenderParserFactory: BookContentRenderParserFactory
 ) : ViewModel() {
 
     private val bookId: Long = savedStateHandle.get<Long>("bookId") ?: -1
@@ -26,8 +28,8 @@ class BookReaderViewModel @Inject constructor(
     private val _book = MutableStateFlow<Book?>(null)
     val book: StateFlow<Book?> = _book.asStateFlow()
 
-    private val _content = MutableStateFlow<BookContent?>(null)
-    val content: StateFlow<BookContent?> = _content.asStateFlow()
+    private val _chapters = MutableStateFlow<List<ChapterView>?>(null)
+    val chapters: StateFlow<List<ChapterView>?> = _chapters.asStateFlow()
 
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -52,7 +54,16 @@ class BookReaderViewModel @Inject constructor(
     private fun loadContent(book: Book) {
         viewModelScope.launch {
             val contentResult = getBookContentUseCase(book)
-            _content.value = contentResult
+            val contentParser = bookContentRenderParserFactory.getParser(book.fileType)
+            
+            val parsedChapters = contentResult?.chapters?.map { chapter ->
+                ChapterView(
+                    title = chapter.metadata.title,
+                    items = contentParser?.parse(chapter.content) ?: emptyList()
+                )
+            }
+            _chapters.value = parsedChapters
+            
             _isLoading.value = false
         }
     }

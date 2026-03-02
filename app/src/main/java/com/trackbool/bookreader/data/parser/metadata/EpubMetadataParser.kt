@@ -7,14 +7,14 @@ import com.trackbool.bookreader.data.parser.resolvePath
 import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.model.Cover
 import com.trackbool.bookreader.domain.model.BookMetadata
-import com.trackbool.bookreader.domain.parser.metadata.DocumentMetadataParser
+import com.trackbool.bookreader.domain.parser.metadata.BookMetadataParser
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.jsoup.parser.Parser
 import java.io.File
 import java.util.zip.ZipFile
 
-class EpubMetadataParser : DocumentMetadataParser {
+class EpubMetadataParser : BookMetadataParser {
 
     override fun parse(file: File): BookMetadata? {
         return try {

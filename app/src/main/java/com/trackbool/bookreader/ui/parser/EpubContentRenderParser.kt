@@ -1,20 +1,20 @@
-package com.trackbool.bookreader.data.parser.text
+package com.trackbool.bookreader.ui.parser
 
-import com.trackbool.bookreader.domain.parser.text.ReaderText
-import com.trackbool.bookreader.domain.parser.text.TextParser
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import com.trackbool.bookreader.ui.model.ReaderText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.jsoup.nodes.Node
 import org.jsoup.nodes.TextNode
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
+import javax.inject.Inject
 
-class EpubTextParser : TextParser {
+class EpubContentRenderParser @Inject constructor() : BookContentRenderParser {
 
     override suspend fun parse(text: String): List<ReaderText> {
         return withContext(Dispatchers.IO) {
