@@ -14,8 +14,7 @@ import java.io.FileOutputStream
 import java.util.UUID
 
 class BookFileRepositoryImpl(
-    private val context: Context,
-    private val metadataParserFactory: BookMetadataParserFactory
+    private val context: Context
 ) : BookFileRepository {
 
     override suspend fun importBooks(bookSources: List<BookSource>): Result<List<BookFileRepository.ImportResult>> {
@@ -95,11 +94,6 @@ class BookFileRepositoryImpl(
         coverFile.writeBytes(cover.bytes)
 
         return "$COVERS_DIR/$fileName"
-    }
-
-    override suspend fun extractMetadata(filePath: String, fileType: BookFileType): BookMetadata? {
-        val file = File(context.filesDir, filePath)
-        return metadataParserFactory.getParser(fileType)?.parse(file)
     }
 
     private fun getFileExtension(fileName: String): String {

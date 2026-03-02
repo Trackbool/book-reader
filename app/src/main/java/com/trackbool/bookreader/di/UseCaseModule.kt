@@ -1,6 +1,7 @@
 package com.trackbool.bookreader.di
 
 import com.trackbool.bookreader.domain.repository.BookFileRepository
+import com.trackbool.bookreader.domain.repository.BookMetadataRepository
 import com.trackbool.bookreader.domain.repository.BookRepository
 import com.trackbool.bookreader.domain.usecase.AddBooksUseCase
 import com.trackbool.bookreader.domain.usecase.DeleteBooksUseCase
@@ -55,9 +56,10 @@ object UseCaseModule {
     @Provides
     @ViewModelScoped
     fun provideImportBooksUseCase(
-        bookFileRepository: BookFileRepository
+        bookFileRepository: BookFileRepository,
+        bookMetadataRepository: BookMetadataRepository
     ): ImportBooksUseCase {
-        return ImportBooksUseCase(bookFileRepository)
+        return ImportBooksUseCase(bookFileRepository, bookMetadataRepository)
     }
 
     @Provides

@@ -10,7 +10,6 @@ interface BookFileRepository {
     suspend fun importBooks(bookSources: List<BookSource>): Result<List<ImportResult>>
     suspend fun deleteBookFiles(books: List<Book>): Result<Unit>
     suspend fun saveCoverImage(cover: Cover): String
-    suspend fun extractMetadata(filePath: String, fileType: BookFileType): BookMetadata?
 
     data class ImportResult(
         val filePath: String,
