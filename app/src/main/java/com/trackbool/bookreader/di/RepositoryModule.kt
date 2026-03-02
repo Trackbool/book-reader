@@ -25,10 +25,9 @@ object RepositoryModule {
     @Singleton
     fun provideBookFileRepository(
         @ApplicationContext context: Context,
-        bookMetadataParserFactory: BookMetadataParserFactory,
-        bookContentParserFactory: BookContentParserFactory
+        bookMetadataParserFactory: BookMetadataParserFactory
     ): BookFileRepository {
-        return BookFileRepositoryImpl(context, bookMetadataParserFactory, bookContentParserFactory)
+        return BookFileRepositoryImpl(context, bookMetadataParserFactory)
     }
 
     @Provides

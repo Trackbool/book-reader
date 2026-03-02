@@ -15,8 +15,7 @@ import java.util.UUID
 
 class BookFileRepositoryImpl(
     private val context: Context,
-    private val metadataParserFactory: BookMetadataParserFactory,
-    private val contentParserFactory: BookContentParserFactory
+    private val metadataParserFactory: BookMetadataParserFactory
 ) : BookFileRepository {
 
     override suspend fun importBooks(bookSources: List<BookSource>): Result<List<BookFileRepository.ImportResult>> {
