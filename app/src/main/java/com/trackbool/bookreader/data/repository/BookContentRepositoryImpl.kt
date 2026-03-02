@@ -19,7 +19,7 @@ class BookContentRepositoryImpl @Inject constructor(
     private var cachedFile: File? = null
     private var cachedContent: BookContent? = null
 
-    override suspend fun getDocumentContent(file: File): BookContent? {
+    override suspend fun getContent(file: File): BookContent? {
         return withContext(Dispatchers.IO) {
             ensureContentLoaded(file)
             cachedContent
