@@ -19,14 +19,14 @@ class EpubTextParser : TextParser {
     override suspend fun parse(text: String): List<ReaderText> {
         return withContext(Dispatchers.IO) {
             try {
-                parseBookContent(text)
+                parseEpubText(text)
             } catch (e: Exception) {
                 emptyList()
             }
         }
     }
 
-    private fun parseBookContent(text: String): List<ReaderText> {
+    private fun parseEpubText(text: String): List<ReaderText> {
         val result = mutableListOf<ReaderText>()
         val document = Jsoup.parse(text)
         val body = document.body() ?: return emptyList()
