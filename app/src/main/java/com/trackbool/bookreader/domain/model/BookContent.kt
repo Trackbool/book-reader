@@ -10,8 +10,8 @@ data class Chapter(
     val content: String
 )
 
-data class DocumentContent(
-    val chapters: List<ChapterMetadata>,
+data class BookContent(
+    val chapters: List<Chapter>,
     val language: String? = null
 ) {
     val totalChapters: Int

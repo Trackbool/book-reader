@@ -9,7 +9,7 @@ import com.trackbool.bookreader.domain.parser.metadata.DocumentMetadataParserFac
 import com.trackbool.bookreader.domain.repository.BookFileRepository
 import com.trackbool.bookreader.domain.repository.BookRepository
 import com.trackbool.bookreader.domain.repository.ChapterRepository
-import com.trackbool.bookreader.domain.parser.content.DocumentContentParserFactory
+import com.trackbool.bookreader.domain.parser.content.BookContentParserFactory
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -41,7 +41,7 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideChapterRepository(
-        parserFactory: DocumentContentParserFactory
+        parserFactory: BookContentParserFactory
     ): ChapterRepository {
         return ChapterRepositoryImpl(parserFactory)
     }

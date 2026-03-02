@@ -1,6 +1,6 @@
 package com.trackbool.bookreader.di
 
-import com.trackbool.bookreader.data.parser.content.DocumentContentParserFactoryImpl
+import com.trackbool.bookreader.data.parser.content.BookContentParserFactoryImpl
 import com.trackbool.bookreader.data.parser.content.EpubContentParser
 import com.trackbool.bookreader.data.parser.content.PdfContentParser
 import com.trackbool.bookreader.data.parser.metadata.DocumentMetadataParserFactoryImpl
@@ -8,7 +8,7 @@ import com.trackbool.bookreader.data.parser.metadata.EpubMetadataParser
 import com.trackbool.bookreader.data.parser.metadata.PdfMetadataParser
 import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.parser.content.DocumentContentParser
-import com.trackbool.bookreader.domain.parser.content.DocumentContentParserFactory
+import com.trackbool.bookreader.domain.parser.content.BookContentParserFactory
 import com.trackbool.bookreader.domain.parser.metadata.DocumentMetadataParser
 import com.trackbool.bookreader.domain.parser.metadata.DocumentMetadataParserFactory
 import dagger.Binds
@@ -31,8 +31,8 @@ abstract class ParserModule {
     @Binds
     @Singleton
     abstract fun bindDocumentContentParserFactory(
-        factoryImpl: DocumentContentParserFactoryImpl
-    ): DocumentContentParserFactory
+        factoryImpl: BookContentParserFactoryImpl
+    ): BookContentParserFactory
 
     companion object {
         @Provides

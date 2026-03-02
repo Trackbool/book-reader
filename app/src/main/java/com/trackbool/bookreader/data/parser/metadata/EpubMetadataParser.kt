@@ -26,6 +26,17 @@ class EpubMetadataParser : DocumentMetadataParser {
 
     override fun supports(fileType: BookFileType) = fileType == BookFileType.EPUB
 
+    /**
+     * Locates the OPF file via the META-INF/container.xml entry:
+     *
+     *   <container>
+     *     <rootfiles>
+     *       <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+     *     </rootfiles>
+     *   </container>
+     *
+     * The OPF path is used to resolve all relative hrefs in the manifest.
+     */
     private fun parseEpub(zip: ZipFile): DocumentMetadata {
         val opfPath = zip.extractOpfPath() ?: return DocumentMetadata()
         val opfContent = zip.readEpubEntryAsString(opfPath) ?: return DocumentMetadata()
@@ -61,18 +72,27 @@ class EpubMetadataParser : DocumentMetadataParser {
             ?: metadata.selectFirst("meta[property=title]")?.text()
     }
 
+    /**
+     * Supports two author formats and optional role refinement:
+     *
+     *   EPUB 2/3 (Dublin Core):
+     *     <dc:creator>Frank Herbert</dc:creator>
+     *
+     *   EPUB 3 with role refinement (filters to role="aut" when present):
+     *     <dc:creator id="author1">Frank Herbert</dc:creator>
+     *     <meta refines="#author1" property="role">aut</meta>
+     *
+     * Multiple authors are joined with ", ".
+     */
     private fun extractAuthor(metadata: Element): String? {
-        // Try dc:creator with namespace
         var creators = metadata.select("dc|creator, creator")
 
-        // Fallback EPUB 3
         if (creators.isEmpty()) {
             creators = metadata.select("meta[property=dcterms:creator], meta[property=creator]")
         }
 
         if (creators.isEmpty()) return null
 
-        // If many authors, take only those with role="aut"
         val authorIds = metadata
             .select("meta[property=role]")
             .filter { it.text().equals("aut", ignoreCase = true) }
@@ -88,6 +108,12 @@ class EpubMetadataParser : DocumentMetadataParser {
         return authors.joinToString(", ") { it.text() }.takeIf { it.isNotEmpty() }
     }
 
+    /**
+     * Supports three description formats:
+     *   EPUB 2/3 (Dublin Core):  <dc:description>...</dc:description>
+     *   EPUB 2 without namespace: <description>...</description>
+     *   EPUB 3 newest:            <meta property="dcterms:description">...</meta>
+     */
     private fun extractDescription(metadata: Element): String? {
         return metadata.selectFirst("dc|description, description")?.text()
             ?: metadata.selectFirst("metadata description")?.text()
@@ -111,7 +137,6 @@ class EpubMetadataParser : DocumentMetadataParser {
     private fun extractCover(opfContent: String, zip: ZipFile, opfDirectory: String): Cover? {
         val doc = Jsoup.parse(opfContent, "", Parser.xmlParser())
 
-        // EPUB 2 — <meta name="cover" content="id">
         val coverId = doc.selectFirst("meta[name=cover]")?.attr("content")
         if (coverId != null) {
             val item = doc.selectFirst("manifest item[id=$coverId]")
@@ -122,7 +147,6 @@ class EpubMetadataParser : DocumentMetadataParser {
             }
         }
 
-        // EPUB 3 — <item properties="cover-image">
         val epub3Item = doc.selectFirst("manifest item[properties=cover-image]")
         val epub3Href = epub3Item?.attr("href")
         if (epub3Href != null) {
@@ -130,7 +154,6 @@ class EpubMetadataParser : DocumentMetadataParser {
             return buildCover(bytes, epub3Item.attr("media-type"))
         }
 
-        // EPUB 2 older — <guide><reference type="cover" href="cover.xhtml">
         val guideHref = doc.selectFirst("guide reference[type=cover]")?.attr("href")
         if (guideHref != null) {
             val xhtmlPath = resolvePath(opfDirectory, guideHref)

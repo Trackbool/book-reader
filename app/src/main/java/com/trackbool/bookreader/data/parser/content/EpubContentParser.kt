@@ -4,8 +4,9 @@ import com.trackbool.bookreader.data.parser.extractOpfPath
 import com.trackbool.bookreader.data.parser.readEpubEntryAsString
 import com.trackbool.bookreader.data.parser.resolvePath
 import com.trackbool.bookreader.domain.model.BookFileType
+import com.trackbool.bookreader.domain.model.Chapter
 import com.trackbool.bookreader.domain.model.ChapterMetadata
-import com.trackbool.bookreader.domain.model.DocumentContent
+import com.trackbool.bookreader.domain.model.BookContent
 import com.trackbool.bookreader.domain.parser.content.DocumentContentParser
 import org.jsoup.Jsoup
 import org.jsoup.parser.Parser
@@ -14,7 +15,7 @@ import java.util.zip.ZipFile
 
 class EpubContentParser : DocumentContentParser {
 
-    override fun parse(file: File): DocumentContent? {
+    override fun parse(file: File): BookContent? {
         return try {
             ZipFile(file).use { zip -> parseEpub(zip) }
         } catch (e: Exception) {
@@ -22,47 +23,49 @@ class EpubContentParser : DocumentContentParser {
         }
     }
 
-    override fun loadChapterContent(file: File, chapterIndex: Int): String {
-        return try {
-            ZipFile(file).use { zip -> readChapterContent(zip, chapterIndex) }
-        } catch (e: Exception) {
-            ""
-        }
-    }
-
     override fun supports(fileType: BookFileType) = fileType == BookFileType.EPUB
 
-    private fun parseEpub(zip: ZipFile): DocumentContent {
-        val opfPath = zip.extractOpfPath() ?: return DocumentContent(chapters = emptyList())
-        val opfContent = zip.readEpubEntryAsString(opfPath) ?: return DocumentContent(chapters = emptyList())
+    /**
+     * Locates the OPF file via the META-INF/container.xml entry:
+     *
+     *   <container>
+     *     <rootfiles>
+     *       <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+     *     </rootfiles>
+     *   </container>
+     *
+     * The OPF path is used to resolve all relative hrefs in the manifest.
+     */
+    private fun parseEpub(zip: ZipFile): BookContent {
+        val opfPath = zip.extractOpfPath() ?: return BookContent(chapters = emptyList())
+        val opfContent = zip.readEpubEntryAsString(opfPath) ?: return BookContent(chapters = emptyList())
         val opfDirectory = opfPath.substringBeforeLast("/", "")
 
-        return DocumentContent(
+        return BookContent(
             chapters = parseChapters(opfDirectory, opfContent, zip),
             language = extractLanguage(opfContent)
         )
     }
 
-    private fun readChapterContent(zip: ZipFile, chapterIndex: Int): String {
-        val opfPath = zip.extractOpfPath() ?: return ""
-        val opfContent = zip.readEpubEntryAsString(opfPath) ?: return ""
-        val opfDirectory = opfPath.substringBeforeLast("/", "")
-
-        val doc = Jsoup.parse(opfContent, "", Parser.xmlParser())
-        val spine = doc.select("spine itemref")
-        val manifest = doc.select("manifest item").associateBy { it.id() }
-
-        val idref = spine.getOrNull(chapterIndex)?.attr("idref") ?: return ""
-        val href = manifest[idref]?.attr("href") ?: return ""
-
-        return zip.readEpubEntryAsString(resolvePath(opfDirectory, href)) ?: ""
-    }
-
+    /**
+     * Builds the chapter list from the OPF spine, which defines reading order:
+     *
+     *   <manifest>
+     *     <item id="chapter1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>
+     *   </manifest>
+     *   <spine>
+     *     <itemref idref="chapter1"/>
+     *     <itemref idref="chapter2"/>
+     *   </spine>
+     *
+     * Each spine itemref points to a manifest item by id. The manifest item
+     * provides the href to the actual HTML file inside the ZIP.
+     */
     private fun parseChapters(
         opfDirectory: String,
         opfContent: String,
         zip: ZipFile
-    ): List<ChapterMetadata> {
+    ): List<Chapter> {
         val doc = Jsoup.parse(opfContent, "", Parser.xmlParser())
         val spine = doc.select("spine itemref")
         val manifest = doc.select("manifest item").associateBy { it.id() }
@@ -70,20 +73,44 @@ class EpubContentParser : DocumentContentParser {
         return spine.mapIndexedNotNull { index, itemref ->
             val idref = itemref.attr("idref")
             val href = manifest[idref]?.attr("href") ?: return@mapIndexedNotNull null
-
             val chapterContent = zip.readEpubEntryAsString(resolvePath(opfDirectory, href)) ?: ""
-            ChapterMetadata(
-                title        = extractChapterTitle(chapterContent),
-                chapterIndex = index
+
+            Chapter(
+                metadata = ChapterMetadata(
+                    title = extractChapterTitle(chapterContent),
+                    chapterIndex = index
+                ),
+                content = chapterContent
             )
         }
     }
 
+    /**
+     * Extracts the book language from the OPF metadata block.
+     * Supports both Dublin Core namespaced and plain variants:
+     *
+     *   EPUB 2 / EPUB 3 (Dublin Core):
+     *     <dc:language>en</dc:language>
+     *
+     *   Minimal OPF (no namespace):
+     *     <language>es</language>
+     */
     private fun extractLanguage(opfContent: String): String? {
         return Jsoup.parse(opfContent, "", Parser.xmlParser())
             .selectFirst("dc|language, language")?.text()
     }
 
+    /**
+     * Extracts the chapter title from the HTML content file.
+     * Tries the following in order of priority:
+     *
+     *   1. <title>Chapter I</title>       — HTML head title
+     *   2. <h1>Chapter I</h1>             — first top-level heading
+     *   3. <h2>Chapter I</h2>             — second-level heading fallback
+     *
+     * Returns null if none are found or all are blank (e.g. auto-generated
+     * nav documents or cover pages with no visible heading).
+     */
     private fun extractChapterTitle(htmlContent: String): String? {
         val doc = Jsoup.parse(htmlContent)
         return doc.selectFirst("title")?.text()?.takeIf { it.isNotBlank() }
