@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -97,34 +98,37 @@ private fun BookContent(
     chapters: List<ChapterView>,
     modifier: Modifier = Modifier
 ) {
-    LazyColumn(
-        modifier = modifier,
-        contentPadding = PaddingValues(16.dp)
-    ) {
-        itemsIndexed(
-            items = chapters,
-            key = { index, _ -> index }
-        ) { index, chapter ->
-            if (index > 0) {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-            }
-            
-            chapter.items.forEach { readerContent ->
-                when (readerContent) {
-                    is ReaderContent.Text -> {
-                        Text(
-                            text = readerContent.annotatedString,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-                    is ReaderContent.Image -> {
-                        AsyncImage(
-                            model = readerContent.src,
-                            contentDescription = readerContent.alt,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 16.dp)
-                        )
+    SelectionContainer {
+        LazyColumn(
+            modifier = modifier,
+            contentPadding = PaddingValues(16.dp)
+        ) {
+            itemsIndexed(
+                items = chapters,
+                key = { index, _ -> index }
+            ) { index, chapter ->
+                if (index > 0) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+                }
+
+                chapter.items.forEach { readerContent ->
+                    when (readerContent) {
+                        is ReaderContent.Text -> {
+                            Text(
+                                text = readerContent.annotatedString,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+
+                        is ReaderContent.Image -> {
+                            AsyncImage(
+                                model = readerContent.src,
+                                contentDescription = readerContent.alt,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp)
+                            )
+                        }
                     }
                 }
             }
