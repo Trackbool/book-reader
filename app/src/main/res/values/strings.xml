@@ -31,4 +31,5 @@
     <string name="delete_success_plural">%1$d libros eliminados correctamente</string>
     <string name="error_delete_book">Error al eliminar el libro</string>
     <string name="error_delete_book_plural">Error al eliminar %1$d libros</string>
+    <string name="reader_error_loading_content">No se pudo cargar el contenido</string>
 </resources>

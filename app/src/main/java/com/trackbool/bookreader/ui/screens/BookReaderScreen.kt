@@ -21,8 +21,10 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.trackbool.bookreader.R
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.ui.components.LoadingIndicator
 import com.trackbool.bookreader.ui.model.ChapterView
@@ -83,7 +85,7 @@ fun BookReaderScreen(
                         .padding(paddingValues),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("No se pudo cargar el contenido")
+                    Text(stringResource(R.string.reader_error_loading_content))
                 }
             }
         }
