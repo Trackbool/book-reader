@@ -9,6 +9,8 @@ import com.trackbool.bookreader.domain.usecase.DeleteBooksUseCase
 import com.trackbool.bookreader.domain.usecase.GetAllBooksUseCase
 import com.trackbool.bookreader.domain.usecase.GetBookContentUseCase
 import com.trackbool.bookreader.domain.usecase.GetBooksInProgressUseCase
+import com.trackbool.bookreader.domain.usecase.GetChapterCountUseCase
+import com.trackbool.bookreader.domain.usecase.GetChapterUseCase
 import com.trackbool.bookreader.domain.usecase.GetCompletedBooksUseCase
 import com.trackbool.bookreader.domain.usecase.ImportBooksUseCase
 import com.trackbool.bookreader.domain.usecase.UpdateBookProgressUseCase
@@ -86,5 +88,21 @@ object UseCaseModule {
         repository: BookContentRepository
     ): GetBookContentUseCase {
         return GetBookContentUseCase(repository)
+    }
+
+    @Provides
+    @ViewModelScoped
+    fun provideGetChapterUseCase(
+        repository: BookContentRepository
+    ): GetChapterUseCase {
+        return GetChapterUseCase(repository)
+    }
+
+    @Provides
+    @ViewModelScoped
+    fun provideGetChapterCountUseCase(
+        repository: BookContentRepository
+    ): GetChapterCountUseCase {
+        return GetChapterCountUseCase(repository)
     }
 }

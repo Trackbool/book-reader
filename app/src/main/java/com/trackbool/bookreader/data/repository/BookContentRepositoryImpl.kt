@@ -1,7 +1,8 @@
 package com.trackbool.bookreader.data.repository
 
-import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.model.BookContent
+import com.trackbool.bookreader.domain.model.BookFileType
+import com.trackbool.bookreader.domain.model.Chapter
 import com.trackbool.bookreader.domain.parser.content.BookContentParserFactory
 import com.trackbool.bookreader.domain.repository.BookContentRepository
 import com.trackbool.bookreader.domain.repository.FileManager
@@ -20,27 +21,38 @@ class BookContentRepositoryImpl(
     private var cachedFilePath: String? = null
     private var cachedContent: BookContent? = null
 
-    override suspend fun getContent(filePath: String): BookContent? {
-        return withContext(Dispatchers.IO) {
+    override suspend fun getContent(filePath: String): BookContent? =
+        withContext(Dispatchers.IO) {
             ensureContentLoaded(filePath)
             cachedContent
         }
-    }
 
-    override fun invalidateCache() {
-        cachedFilePath = null
-        cachedContent = null
+    override suspend fun getChapter(filePath: String, chapterIndex: Int): Chapter? =
+        withContext(Dispatchers.IO) {
+            ensureContentLoaded(filePath)
+            cachedContent?.chapters?.getOrNull(chapterIndex)
+        }
+
+    override suspend fun getChapterCount(filePath: String): Int =
+        withContext(Dispatchers.IO) {
+            ensureContentLoaded(filePath)
+            cachedContent?.totalChapters ?: 0
+        }
+
+    override suspend fun invalidateCache() {
+        cacheMutex.withLock {
+            cachedFilePath = null
+            cachedContent = null
+        }
     }
 
     private suspend fun ensureContentLoaded(filePath: String) {
         cacheMutex.withLock {
-            if (cachedFilePath == null || cachedFilePath != filePath) {
-                cachedFilePath = filePath
-                val file = fileManager.getFile(filePath)
-                val fileType = BookFileType.fromExtension(file.extension)
-                val parser = parserFactory.getParser(fileType)
-                cachedContent = parser?.parse(file)
-            }
+            if (cachedFilePath == filePath) return
+            val file = fileManager.getFile(filePath)
+            val fileType = BookFileType.fromExtension(file.extension)
+            cachedContent = parserFactory.getParser(fileType)?.parse(file)
+            cachedFilePath = filePath
         }
     }
 }

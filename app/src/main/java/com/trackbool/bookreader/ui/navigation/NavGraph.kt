@@ -65,12 +65,15 @@ fun AppNavGraph(
             val book by viewModel.book.collectAsState()
             val chapters by viewModel.chapters.collectAsState()
             val isLoading by viewModel.isLoading.collectAsState()
+            val hasMoreChapters by viewModel.hasMoreChapters.collectAsState()
 
             book?.let {
                 BookReaderScreen(
                     book = it,
                     chapters = chapters,
                     isLoading = isLoading,
+                    hasMoreChapters = hasMoreChapters,
+                    onLoadMore = { viewModel.loadNextChapters() },
                     onBack = { navController.popBackStack() }
                 )
             }

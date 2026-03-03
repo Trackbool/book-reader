@@ -32,7 +32,7 @@ class EpubContentRenderParser @Inject constructor() : BookContentRenderParser {
     private fun parseEpubText(text: String): List<ReaderContent> {
         val result = mutableListOf<ReaderContent>()
         val document = Jsoup.parse(text)
-        val body = document.body() ?: return emptyList()
+        val body = document.body()
         parseBlockElements(body, result)
         return result
     }
