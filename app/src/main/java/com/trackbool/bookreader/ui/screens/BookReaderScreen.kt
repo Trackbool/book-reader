@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -115,7 +114,6 @@ private fun BookContent(
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
-
     val totalItems = chapters.sumOf { it.items.size }
 
     LaunchedEffect(listState, totalItems) {
@@ -130,25 +128,26 @@ private fun BookContent(
             .collect { onLoadMore() }
     }
 
-    SelectionContainer {
-        LazyColumn(
-            state = listState,
-            modifier = modifier,
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-        ) {
-            chapters.forEachIndexed { chapterIndex, chapter ->
-                if (chapterIndex > 0) {
-                    item(key = "divider_$chapterIndex") {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-                    }
+    LazyColumn(
+        state = listState,
+        modifier = modifier,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        chapters.forEachIndexed { chapterIndex, chapter ->
+
+            if (chapterIndex > 0) {
+                item(key = "divider_$chapterIndex") {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
                 }
+            }
 
-                chapter.items.forEachIndexed { itemIndex, readerContent ->
-                    val itemKey = "${chapter.id}_$itemIndex"
+            chapter.items.forEachIndexed { itemIndex, readerContent ->
+                val itemKey = "${chapter.id}_$itemIndex"
 
-                    when (readerContent) {
-                        is ReaderContent.Text -> {
-                            item(key = itemKey, contentType = "text") {
+                when (readerContent) {
+                    is ReaderContent.Text -> {
+                        item(key = itemKey, contentType = "text") {
+                            SelectionContainer {
                                 Text(
                                     text = readerContent.annotatedString,
                                     style = MaterialTheme.typography.bodyLarge,
@@ -156,33 +155,31 @@ private fun BookContent(
                                 )
                             }
                         }
-                        is ReaderContent.Image -> {
-                            item(key = itemKey, contentType = "image") {
-                                DisableSelection {
-                                    AsyncImage(
-                                        model = readerContent.src,
-                                        contentDescription = readerContent.alt,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(bottom = 16.dp)
-                                    )
-                                }
-                            }
+                    }
+                    is ReaderContent.Image -> {
+                        item(key = itemKey, contentType = "image") {
+                            AsyncImage(
+                                model = readerContent.src,
+                                contentDescription = readerContent.alt,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp)
+                            )
                         }
                     }
                 }
             }
+        }
 
-            if (isLoadingMore) {
-                item(key = "loading_indicator", contentType = "loading") {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
+        if (isLoadingMore) {
+            item(key = "loading_indicator", contentType = "loading") {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
                 }
             }
         }
