@@ -83,6 +83,18 @@ class EpubContentRenderParser @Inject constructor() : BookContentRenderParser {
                         }
                     }
 
+                    "svg" -> {
+                        // SVG in EPUBs is almost exclusively used as an image wrapper.
+                        // We extract the first image reference if present;
+                        // full SVG rendering would require a WebView or a dedicated
+                        // SVG library (e.g. AndroidSVG).
+                        val imageNode = node.selectFirst("image[xlink:href]")
+                        val href = imageNode?.attr("xlink:href").orEmpty()
+                        if (href.isNotBlank()) {
+                            result.add(ReaderContent.Image(src = href, alt = null))
+                        }
+                    }
+
                     else -> parseBlockElements(node, result)
                 }
 
@@ -161,6 +173,15 @@ class EpubContentRenderParser @Inject constructor() : BookContentRenderParser {
                 }
 
                 "br" -> builderRef.value.append("\n")
+
+                "svg" -> {
+                    val imageNode = node.selectFirst("image[xlink:href]")
+                    val href = imageNode?.attr("xlink:href").orEmpty()
+                    if (href.isNotBlank()) {
+                        builderRef.value = flushBuilder(builderRef.value, result, headingStyle)
+                        result.add(ReaderContent.Image(src = href, alt = null))
+                    }
+                }
 
                 // span, a, and other inline wrappers — transparent, keep descending
                 else -> node.childNodes().forEach { collectMixedContent(it, builderRef, result, headingStyle) }

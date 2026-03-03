@@ -109,6 +109,16 @@ class EpubContentParser : BookContentParser {
                 img.attr("src", "epub://$filePath!$normalizedZipPath")
             }
         }
+
+        // SVG <image xlink:href="..."> — used for cover images in many EPUBs
+        doc.select("image[xlink:href]").forEach { image ->
+            val href = image.attr("xlink:href")
+            if (!href.startsWith("epub://") && !href.startsWith("data:") && !href.startsWith("http")) {
+                val normalizedZipPath = normalizePath(resolvePath(chapterDir, href))
+                image.attr("xlink:href", "epub://$filePath!$normalizedZipPath")
+            }
+        }
+
         return doc.toString()
     }
 
