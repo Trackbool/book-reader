@@ -56,8 +56,9 @@ class BookReaderViewModel @Inject constructor(
             val contentResult = getBookContentUseCase(book)
             val contentParser = bookContentRenderParserFactory.getParser(book.fileType)
             
-            val parsedChapters = contentResult?.chapters?.map { chapter ->
+            val parsedChapters = contentResult?.chapters?.mapIndexed { index, chapter ->
                 ChapterView(
+                    id = "${book.id}_$index",
                     title = chapter.metadata.title,
                     items = contentParser?.parse(chapter.content) ?: emptyList()
                 )

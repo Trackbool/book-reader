@@ -105,7 +105,7 @@ private fun BookContent(
         ) {
             itemsIndexed(
                 items = chapters,
-                key = { index, _ -> index }
+                key = { _, chapter -> chapter.id }
             ) { index, chapter ->
                 if (index > 0) {
                     HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
