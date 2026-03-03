@@ -4,16 +4,16 @@ import androidx.compose.ui.text.AnnotatedString
 
 data class ChapterView(
     val title: String?,
-    val items: List<ReaderText>
+    val items: List<ReaderContent>
 )
 
-sealed class ReaderText {
+sealed class ReaderContent {
     data class Text(
         val annotatedString: AnnotatedString
-    ) : ReaderText()
+    ) : ReaderContent()
 
     data class Image(
         val src: String,
         val alt: String? = null
-    ) : ReaderText()
+    ) : ReaderContent()
 }

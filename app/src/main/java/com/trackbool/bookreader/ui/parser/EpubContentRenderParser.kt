@@ -5,7 +5,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
-import com.trackbool.bookreader.ui.model.ReaderText
+import com.trackbool.bookreader.ui.model.ReaderContent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
@@ -16,7 +16,9 @@ import javax.inject.Inject
 
 class EpubContentRenderParser @Inject constructor() : BookContentRenderParser {
 
-    override suspend fun parse(text: String): List<ReaderText> {
+    private class BuilderRef(var value: AnnotatedString.Builder = AnnotatedString.Builder())
+
+    override suspend fun parse(text: String): List<ReaderContent> {
         return withContext(Dispatchers.IO) {
             try {
                 parseEpubText(text)
@@ -26,176 +28,153 @@ class EpubContentRenderParser @Inject constructor() : BookContentRenderParser {
         }
     }
 
-    private fun parseEpubText(text: String): List<ReaderText> {
-        val result = mutableListOf<ReaderText>()
+    private fun parseEpubText(text: String): List<ReaderContent> {
+        val result = mutableListOf<ReaderContent>()
         val document = Jsoup.parse(text)
         val body = document.body() ?: return emptyList()
-
         parseBlockElements(body, result)
-
         return result
     }
 
     private fun parseBlockElements(
         element: Element,
-        result: MutableList<ReaderText>
+        result: MutableList<ReaderContent>
     ) {
         element.childNodes().forEach { node ->
             when (node) {
+                is Element -> when (node.tagName().lowercase()) {
 
-                is Element -> {
-                    when (node.tagName().lowercase()) {
+                    "p" -> {
+                        val items = mutableListOf<ReaderContent>()
+                        val builderRef = BuilderRef()
+                        collectMixedContent(node, builderRef, items, heading = false)
+                        flushBuilder(builderRef.value, items)
+                        result.addAll(items)
+                    }
 
-                        "p" -> {
-                            val annotated = buildAnnotatedStringFromElement(node)
-                            if (annotated.text.isNotBlank()) {
-                                result.add(ReaderText.Text(annotated + AnnotatedString("\n")))
-                            }
-                        }
+                    "h1", "h2", "h3", "h4", "h5", "h6" -> {
+                        val items = mutableListOf<ReaderContent>()
+                        val builderRef = BuilderRef()
+                        collectMixedContent(node, builderRef, items, heading = true)
+                        flushBuilder(builderRef.value, items)
+                        result.addAll(items)
+                    }
 
-                        "h1", "h2", "h3", "h4", "h5", "h6" -> {
-                            val annotated = buildAnnotatedStringFromElement(
-                                node,
-                                heading = true
-                            )
-                            if (annotated.text.isNotBlank()) {
-                                result.add(ReaderText.Text(annotated + AnnotatedString("\n")))
-                            }
-                        }
+                    "div", "section", "article", "body" -> {
+                        parseBlockElements(node, result)
+                    }
 
-                        "div", "section", "article", "body" -> {
-                            parseBlockElements(node, result)
-                        }
+                    "br" -> {
+                        result.add(ReaderContent.Text(AnnotatedString("\n")))
+                    }
 
-                        "br" -> {
+                    "img" -> {
+                        val src = node.attr("src")
+                        if (src.isNotBlank()) {
                             result.add(
-                                ReaderText.Text(
-                                    AnnotatedString("\n")
+                                ReaderContent.Image(
+                                    src = src,
+                                    alt = node.attr("alt").ifBlank { null }
                                 )
                             )
-                        }
-
-                        "img" -> {
-                            val src = node.attr("src")
-                            if (src.isNotBlank()) {
-                                result.add(
-                                    ReaderText.Image(
-                                        src = src,
-                                        alt = node.attr("alt").ifBlank { null }
-                                    )
-                                )
-                            }
-                        }
-
-                        else -> {
-                            parseBlockElements(node, result)
                         }
                     }
+
+                    else -> parseBlockElements(node, result)
                 }
 
                 is TextNode -> {
                     val text = node.text().trim()
                     if (text.isNotBlank()) {
+                        result.add(ReaderContent.Text(AnnotatedString(text)))
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Recursively walks the node tree collecting text (with inline styles)
+     * into [builderRef] and emitting ReaderContent.Image whenever an <img> is
+     * encountered at any nesting depth.
+     *
+     * When an image is found, the text accumulated so far is flushed as a
+     * Text item before emitting the Image, so ordering is preserved:
+     *
+     *   <p>Intro <span><img src="..."/></span> conclusion</p>
+     *   -> [Text("Intro "), Image(...), Text("conclusion\n")]
+     */
+    private fun collectMixedContent(
+        node: Node,
+        builderRef: BuilderRef,
+        result: MutableList<ReaderContent>,
+        heading: Boolean
+    ) {
+        when (node) {
+            is TextNode -> {
+                val text = node.text()
+                if (text.isNotBlank()) builderRef.value.append(text)
+            }
+
+            is Element -> when (node.tagName().lowercase()) {
+                "img" -> {
+                    builderRef.value = flushBuilder(builderRef.value, result)
+                    val src = node.attr("src")
+                    if (src.isNotBlank()) {
                         result.add(
-                            ReaderText.Text(
-                                AnnotatedString(text)
+                            ReaderContent.Image(
+                                src = src,
+                                alt = node.attr("alt").ifBlank { null }
                             )
                         )
                     }
                 }
-            }
-        }
-    }
 
-    private fun buildAnnotatedStringFromElement(
-        element: Element,
-        heading: Boolean = false
-    ): AnnotatedString {
-
-        val builder = AnnotatedString.Builder()
-
-        if (heading) {
-            builder.pushStyle(
-                SpanStyle(fontWeight = FontWeight.Bold)
-            )
-        }
-
-        element.childNodes().forEach { node ->
-            parseInlineNode(node, builder)
-        }
-
-        if (heading) {
-            builder.pop()
-        }
-
-        return builder.toAnnotatedString()
-    }
-
-    private fun parseInlineNode(
-        node: Node,
-        builder: AnnotatedString.Builder
-    ) {
-        when (node) {
-
-            is TextNode -> {
-                builder.append(node.text())
-            }
-
-            is Element -> {
-
-                when (node.tagName().lowercase()) {
-
-                    "em", "i" -> {
-                        builder.pushStyle(
-                            SpanStyle(fontStyle = FontStyle.Italic)
-                        )
-                        node.childNodes().forEach {
-                            parseInlineNode(it, builder)
-                        }
-                        builder.pop()
-                    }
-
-                    "strong", "b" -> {
-                        builder.pushStyle(
-                            SpanStyle(fontWeight = FontWeight.Bold)
-                        )
-                        node.childNodes().forEach {
-                            parseInlineNode(it, builder)
-                        }
-                        builder.pop()
-                    }
-
-                    "u" -> {
-                        builder.pushStyle(
-                            SpanStyle(textDecoration = TextDecoration.Underline)
-                        )
-                        node.childNodes().forEach {
-                            parseInlineNode(it, builder)
-                        }
-                        builder.pop()
-                    }
-
-                    "s", "strike", "del" -> {
-                        builder.pushStyle(
-                            SpanStyle(textDecoration = TextDecoration.LineThrough)
-                        )
-                        node.childNodes().forEach {
-                            parseInlineNode(it, builder)
-                        }
-                        builder.pop()
-                    }
-
-                    "br" -> {
-                        builder.append("\n")
-                    }
-
-                    else -> {
-                        node.childNodes().forEach {
-                            parseInlineNode(it, builder)
-                        }
-                    }
+                "em", "i" -> {
+                    builderRef.value.pushStyle(SpanStyle(fontStyle = FontStyle.Italic))
+                    node.childNodes().forEach { collectMixedContent(it, builderRef, result, heading) }
+                    builderRef.value.pop()
                 }
+
+                "strong", "b" -> {
+                    builderRef.value.pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
+                    node.childNodes().forEach { collectMixedContent(it, builderRef, result, heading) }
+                    builderRef.value.pop()
+                }
+
+                "u" -> {
+                    builderRef.value.pushStyle(SpanStyle(textDecoration = TextDecoration.Underline))
+                    node.childNodes().forEach { collectMixedContent(it, builderRef, result, heading) }
+                    builderRef.value.pop()
+                }
+
+                "s", "strike", "del" -> {
+                    builderRef.value.pushStyle(SpanStyle(textDecoration = TextDecoration.LineThrough))
+                    node.childNodes().forEach { collectMixedContent(it, builderRef, result, heading) }
+                    builderRef.value.pop()
+                }
+
+                "br" -> builderRef.value.append("\n")
+
+                // span, a, and other inline wrappers — transparent, keep descending
+                else -> node.childNodes().forEach { collectMixedContent(it, builderRef, result, heading) }
             }
         }
+    }
+
+    /**
+     * Emits the current builder content as a Text item with a trailing newline.
+     * Returns a fresh builder to replace the old one.
+     * No-op if the accumulated text is blank.
+     */
+    private fun flushBuilder(
+        builder: AnnotatedString.Builder,
+        result: MutableList<ReaderContent>
+    ): AnnotatedString.Builder {
+        val annotated = builder.toAnnotatedString()
+        if (annotated.text.isNotBlank()) {
+            result.add(ReaderContent.Text(annotated + AnnotatedString("\n")))
+        }
+        return AnnotatedString.Builder()
     }
 }

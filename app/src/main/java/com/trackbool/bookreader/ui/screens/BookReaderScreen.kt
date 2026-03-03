@@ -3,6 +3,7 @@ package com.trackbool.bookreader.ui.screens
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -20,12 +21,12 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.ui.components.LoadingIndicator
 import com.trackbool.bookreader.ui.model.ChapterView
-import com.trackbool.bookreader.ui.model.ReaderText
+import com.trackbool.bookreader.ui.model.ReaderContent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -100,25 +101,27 @@ private fun BookContent(
     ) {
         itemsIndexed(
             items = chapters,
-            key = { index, chapter -> index }
+            key = { index, _ -> index }
         ) { index, chapter ->
             if (index > 0) {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
             }
             
-            chapter.items.forEach { readerText ->
-                when (readerText) {
-                    is ReaderText.Text -> {
+            chapter.items.forEach { readerContent ->
+                when (readerContent) {
+                    is ReaderContent.Text -> {
                         Text(
-                            text = readerText.annotatedString,
+                            text = readerContent.annotatedString,
                             style = MaterialTheme.typography.bodyLarge
                         )
                     }
-                    is ReaderText.Image -> {
-                        Text(
-                            text = "[Imagen: ${readerText.alt ?: readerText.src}]",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.primary
+                    is ReaderContent.Image -> {
+                        AsyncImage(
+                            model = readerContent.src,
+                            contentDescription = readerContent.alt,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp)
                         )
                     }
                 }

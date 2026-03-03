@@ -17,7 +17,7 @@ class EpubContentParser : BookContentParser {
 
     override fun parse(file: File): BookContent? {
         return try {
-            ZipFile(file).use { zip -> parseEpub(zip) }
+            ZipFile(file).use { zip -> parseEpub(zip, file.absolutePath) }
         } catch (e: Exception) {
             null
         }
@@ -36,13 +36,13 @@ class EpubContentParser : BookContentParser {
      *
      * The OPF path is used to resolve all relative hrefs in the manifest.
      */
-    private fun parseEpub(zip: ZipFile): BookContent {
+    private fun parseEpub(zip: ZipFile, filePath: String): BookContent {
         val opfPath = zip.extractOpfPath() ?: return BookContent(chapters = emptyList())
         val opfContent = zip.readEpubEntryAsString(opfPath) ?: return BookContent(chapters = emptyList())
         val opfDirectory = opfPath.substringBeforeLast("/", "")
 
         return BookContent(
-            chapters = parseChapters(opfDirectory, opfContent, zip),
+            chapters = parseChapters(opfDirectory, opfContent, zip, filePath),
             language = extractLanguage(opfContent)
         )
     }
@@ -64,7 +64,8 @@ class EpubContentParser : BookContentParser {
     private fun parseChapters(
         opfDirectory: String,
         opfContent: String,
-        zip: ZipFile
+        zip: ZipFile,
+        filePath: String
     ): List<Chapter> {
         val doc = Jsoup.parse(opfContent, "", Parser.xmlParser())
         val spine = doc.select("spine itemref")
@@ -73,16 +74,58 @@ class EpubContentParser : BookContentParser {
         return spine.mapIndexedNotNull { index, itemref ->
             val idref = itemref.attr("idref")
             val href = manifest[idref]?.attr("href") ?: return@mapIndexedNotNull null
-            val chapterContent = zip.readEpubEntryAsString(resolvePath(opfDirectory, href)) ?: ""
+            val chapterPath = resolvePath(opfDirectory, href)
+            val rawContent = zip.readEpubEntryAsString(chapterPath) ?: ""
+            val chapterDir = chapterPath.substringBeforeLast("/", "")
 
             Chapter(
                 metadata = ChapterMetadata(
-                    title = extractChapterTitle(chapterContent),
+                    title = extractChapterTitle(rawContent),
                     chapterIndex = index
                 ),
-                content = chapterContent
+                content = rewriteImageSrcs(rawContent, chapterDir, filePath)
             )
         }
+    }
+
+    /**
+     * Rewrites relative <img src> paths to a custom URI scheme:
+     *
+     *   ../images/cover.jpg  ->  epub:///abs/path/to/book.epub!OEBPS/images/cover.jpg
+     *
+     * Skips already-absolute URIs (data:, http:, epub://).
+     */
+    private fun rewriteImageSrcs(
+        html: String,
+        chapterDir: String,
+        filePath: String
+    ): String {
+        val doc = Jsoup.parse(html)
+        doc.select("img[src]").forEach { img ->
+            val src = img.attr("src")
+            if (!src.startsWith("epub://") && !src.startsWith("data:") && !src.startsWith("http")) {
+                val rawZipPath = resolvePath(chapterDir, src)
+                val normalizedZipPath = normalizePath(rawZipPath)
+                img.attr("src", "epub://$filePath!$normalizedZipPath")
+            }
+        }
+        return doc.toString()
+    }
+
+    /**
+     * Resolves ".." and "." segments in a ZIP entry path.
+     * e.g. "OEBPS/Text/../Images/cover.jpg" -> "OEBPS/Images/cover.jpg"
+     */
+    private fun normalizePath(path: String): String {
+        val segments = ArrayDeque<String>()
+        path.split("/").forEach { segment ->
+            when (segment) {
+                ".", "" -> Unit
+                ".." -> segments.removeLastOrNull()
+                else -> segments.addLast(segment)
+            }
+        }
+        return segments.joinToString("/")
     }
 
     /**
