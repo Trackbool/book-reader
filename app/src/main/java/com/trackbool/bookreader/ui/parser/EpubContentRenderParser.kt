@@ -5,6 +5,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.sp
 import com.trackbool.bookreader.ui.model.ReaderContent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -55,7 +56,10 @@ class EpubContentRenderParser @Inject constructor() : BookContentRenderParser {
                     "h1", "h2", "h3", "h4", "h5", "h6" -> {
                         val items = mutableListOf<ReaderContent>()
                         val builderRef = BuilderRef()
+                        val headingStyle = headingStyleFor(node.tagName().lowercase())
+                        builderRef.value.pushStyle(headingStyle)
                         collectMixedContent(node, builderRef, items, heading = true)
+                        builderRef.value.pop()
                         flushBuilder(builderRef.value, items)
                         result.addAll(items)
                     }
@@ -160,6 +164,13 @@ class EpubContentRenderParser @Inject constructor() : BookContentRenderParser {
                 else -> node.childNodes().forEach { collectMixedContent(it, builderRef, result, heading) }
             }
         }
+    }
+
+    private fun headingStyleFor(tag: String): SpanStyle = when (tag) {
+        "h1" -> SpanStyle(fontWeight = FontWeight.Bold, fontSize = 22.sp)
+        "h2" -> SpanStyle(fontWeight = FontWeight.Bold, fontSize = 20.sp)
+        "h3" -> SpanStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        else -> SpanStyle(fontWeight = FontWeight.Bold, fontSize = 14.sp)
     }
 
     /**
