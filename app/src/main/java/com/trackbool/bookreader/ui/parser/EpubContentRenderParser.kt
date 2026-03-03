@@ -48,7 +48,7 @@ class EpubContentRenderParser @Inject constructor() : BookContentRenderParser {
                     "p" -> {
                         val items = mutableListOf<ReaderContent>()
                         val builderRef = BuilderRef()
-                        collectMixedContent(node, builderRef, items, heading = false)
+                        collectMixedContent(node, builderRef, items, headingStyle = null)
                         flushBuilder(builderRef.value, items)
                         result.addAll(items)
                     }
@@ -58,8 +58,7 @@ class EpubContentRenderParser @Inject constructor() : BookContentRenderParser {
                         val builderRef = BuilderRef()
                         val headingStyle = headingStyleFor(node.tagName().lowercase())
                         builderRef.value.pushStyle(headingStyle)
-                        collectMixedContent(node, builderRef, items, heading = true)
-                        builderRef.value.pop()
+                        collectMixedContent(node, builderRef, items, headingStyle = headingStyle)
                         flushBuilder(builderRef.value, items)
                         result.addAll(items)
                     }
@@ -107,12 +106,15 @@ class EpubContentRenderParser @Inject constructor() : BookContentRenderParser {
      *
      *   <p>Intro <span><img src="..."/></span> conclusion</p>
      *   -> [Text("Intro "), Image(...), Text("conclusion\n")]
+     *
+     * [headingStyle] is re-applied on each fresh builder after a flush so that
+     * text segments following an image inside a heading retain correct styling.
      */
     private fun collectMixedContent(
         node: Node,
         builderRef: BuilderRef,
         result: MutableList<ReaderContent>,
-        heading: Boolean
+        headingStyle: SpanStyle?
     ) {
         when (node) {
             is TextNode -> {
@@ -122,7 +124,7 @@ class EpubContentRenderParser @Inject constructor() : BookContentRenderParser {
 
             is Element -> when (node.tagName().lowercase()) {
                 "img" -> {
-                    builderRef.value = flushBuilder(builderRef.value, result)
+                    builderRef.value = flushBuilder(builderRef.value, result, headingStyle)
                     val src = node.attr("src")
                     if (src.isNotBlank()) {
                         result.add(
@@ -136,56 +138,60 @@ class EpubContentRenderParser @Inject constructor() : BookContentRenderParser {
 
                 "em", "i" -> {
                     builderRef.value.pushStyle(SpanStyle(fontStyle = FontStyle.Italic))
-                    node.childNodes().forEach { collectMixedContent(it, builderRef, result, heading) }
+                    node.childNodes().forEach { collectMixedContent(it, builderRef, result, headingStyle) }
                     builderRef.value.pop()
                 }
 
                 "strong", "b" -> {
                     builderRef.value.pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
-                    node.childNodes().forEach { collectMixedContent(it, builderRef, result, heading) }
+                    node.childNodes().forEach { collectMixedContent(it, builderRef, result, headingStyle) }
                     builderRef.value.pop()
                 }
 
                 "u" -> {
                     builderRef.value.pushStyle(SpanStyle(textDecoration = TextDecoration.Underline))
-                    node.childNodes().forEach { collectMixedContent(it, builderRef, result, heading) }
+                    node.childNodes().forEach { collectMixedContent(it, builderRef, result, headingStyle) }
                     builderRef.value.pop()
                 }
 
                 "s", "strike", "del" -> {
                     builderRef.value.pushStyle(SpanStyle(textDecoration = TextDecoration.LineThrough))
-                    node.childNodes().forEach { collectMixedContent(it, builderRef, result, heading) }
+                    node.childNodes().forEach { collectMixedContent(it, builderRef, result, headingStyle) }
                     builderRef.value.pop()
                 }
 
                 "br" -> builderRef.value.append("\n")
 
                 // span, a, and other inline wrappers — transparent, keep descending
-                else -> node.childNodes().forEach { collectMixedContent(it, builderRef, result, heading) }
+                else -> node.childNodes().forEach { collectMixedContent(it, builderRef, result, headingStyle) }
             }
         }
     }
 
-    private fun headingStyleFor(tag: String): SpanStyle = when (tag) {
-        "h1" -> SpanStyle(fontWeight = FontWeight.Bold, fontSize = 22.sp)
-        "h2" -> SpanStyle(fontWeight = FontWeight.Bold, fontSize = 20.sp)
-        "h3" -> SpanStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        else -> SpanStyle(fontWeight = FontWeight.Bold, fontSize = 14.sp)
-    }
-
     /**
      * Emits the current builder content as a Text item with a trailing newline.
-     * Returns a fresh builder to replace the old one.
+     * Returns a fresh builder to replace the old one, with [headingStyle]
+     * re-applied if present so subsequent text segments retain heading styling.
      * No-op if the accumulated text is blank.
      */
     private fun flushBuilder(
         builder: AnnotatedString.Builder,
-        result: MutableList<ReaderContent>
+        result: MutableList<ReaderContent>,
+        headingStyle: SpanStyle? = null
     ): AnnotatedString.Builder {
         val annotated = builder.toAnnotatedString()
         if (annotated.text.isNotBlank()) {
             result.add(ReaderContent.Text(annotated + AnnotatedString("\n")))
         }
-        return AnnotatedString.Builder()
+        return AnnotatedString.Builder().apply {
+            if (headingStyle != null) pushStyle(headingStyle)
+        }
+    }
+
+    private fun headingStyleFor(tag: String): SpanStyle = when (tag) {
+        "h1" -> SpanStyle(fontWeight = FontWeight.Bold, fontSize = 26.sp)
+        "h2" -> SpanStyle(fontWeight = FontWeight.Bold, fontSize = 22.sp)
+        "h3" -> SpanStyle(fontWeight = FontWeight.Bold, fontSize = 18.sp)
+        else -> SpanStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp)
     }
 }
