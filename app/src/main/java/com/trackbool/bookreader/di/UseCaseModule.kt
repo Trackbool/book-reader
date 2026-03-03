@@ -8,6 +8,7 @@ import com.trackbool.bookreader.domain.usecase.AddBooksUseCase
 import com.trackbool.bookreader.domain.usecase.DeleteBooksUseCase
 import com.trackbool.bookreader.domain.usecase.GetAllBooksUseCase
 import com.trackbool.bookreader.domain.usecase.GetBookContentUseCase
+import com.trackbool.bookreader.domain.usecase.GetBookUseCase
 import com.trackbool.bookreader.domain.usecase.GetBooksInProgressUseCase
 import com.trackbool.bookreader.domain.usecase.GetChapterCountUseCase
 import com.trackbool.bookreader.domain.usecase.GetChapterUseCase
@@ -23,6 +24,14 @@ import dagger.hilt.android.scopes.ViewModelScoped
 @Module
 @InstallIn(ViewModelComponent::class)
 object UseCaseModule {
+
+    @Provides
+    @ViewModelScoped
+    fun provideGetBookUseCase(
+        repository: BookRepository
+    ): GetBookUseCase {
+        return GetBookUseCase(repository)
+    }
 
     @Provides
     @ViewModelScoped

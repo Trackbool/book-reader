@@ -7,7 +7,7 @@ interface BookRepository {
     fun getAllBooks(): Flow<List<Book>>
     fun getBooksInProgress(): Flow<List<Book>>
     fun getCompletedBooks(): Flow<List<Book>>
-    suspend fun getBookById(id: Long): Result<Book>
+    fun getBookById(id: Long): Flow<Book>
     suspend fun insertBooks(books: List<Book>): Result<List<Book>>
     suspend fun updateBook(book: Book): Result<Book>
     suspend fun deleteBooks(books: List<Book>): Result<List<Book>>

@@ -25,14 +25,8 @@ class BookRepositoryImpl(private val bookDao: BookDao) : BookRepository {
             entities.map { it.toDomain() }
         }
 
-    override suspend fun getBookById(id: Long): Result<Book> =
-        try {
-            bookDao.getBookById(id)?.toDomain()?.let {
-                Result.success(it)
-            } ?: Result.failure(NoSuchElementException("Book not found with id: $id"))
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    override fun getBookById(id: Long): Flow<Book> =
+        bookDao.getBookById(id).map { it.toDomain() }
 
     override suspend fun insertBooks(books: List<Book>): Result<List<Book>> =
         try {

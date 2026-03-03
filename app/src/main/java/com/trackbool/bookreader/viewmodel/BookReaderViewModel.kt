@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.repository.BookRepository
+import com.trackbool.bookreader.domain.usecase.GetBookUseCase
 import com.trackbool.bookreader.domain.usecase.GetChapterCountUseCase
 import com.trackbool.bookreader.domain.usecase.GetChapterUseCase
 import com.trackbool.bookreader.ui.model.ChapterView
@@ -15,6 +16,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -24,7 +26,7 @@ private const val CHAPTERS_PER_BATCH = 5
 @HiltViewModel
 class BookReaderViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val bookRepository: BookRepository,
+    private val getBookUseCase: GetBookUseCase,
     private val getChapterUseCase: GetChapterUseCase,
     private val getChapterCountUseCase: GetChapterCountUseCase,
     private val bookContentRenderParserFactory: BookContentRenderParserFactory
@@ -55,14 +57,10 @@ class BookReaderViewModel @Inject constructor(
     private fun loadBook() {
         viewModelScope.launch {
             _isLoading.value = true
-            bookRepository.getBookById(bookId)
-                .onSuccess { book ->
-                    _book.value = book
-                    loadContent(book)
-                }
-                .onFailure {
-                    _isLoading.value = false
-                }
+            getBookUseCase(bookId).collectLatest { book ->
+                _book.value = book
+                loadContent(book)
+            }
         }
     }
 
