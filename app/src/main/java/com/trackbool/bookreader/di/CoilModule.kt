@@ -5,6 +5,7 @@ import coil.ImageLoader
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import com.trackbool.bookreader.ui.EpubImageFetcher
+import com.trackbool.bookreader.ui.EpubZipCache
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -18,10 +19,13 @@ object CoilModule {
 
     @Provides
     @Singleton
-    fun provideImageLoader(@ApplicationContext context: Context): ImageLoader {
+    fun provideImageLoader(
+        @ApplicationContext context: Context,
+        zipCache: EpubZipCache
+    ): ImageLoader {
         return ImageLoader.Builder(context)
             .components {
-                add(EpubImageFetcher.Factory())
+                add(EpubImageFetcher.Factory(zipCache))
             }
             .memoryCache {
                 MemoryCache.Builder(context)
