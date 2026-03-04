@@ -8,32 +8,75 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: Georgia, 'Times New Roman', serif;
-      font-size: 18px;
-      line-height: 1.75;
-      color: #1c1c1e;
       background: transparent;
-      padding: 24px 20px 48px;
-      word-wrap: break-word;
-      overflow-wrap: break-word;
       -webkit-text-size-adjust: 100%;
     }
 
-    .chapter { margin-bottom: 56px; }
-
-    .chapter-body p  { margin-bottom: 1em; text-indent: 1.5em; }
-    .chapter-body p:first-child { text-indent: 0; }
-
-    .chapter-body img {
-      max-width: 100%;
-      height: auto;
-      display: block;
-      margin: 16px auto;
+    #content {
+      padding: 24px 0 48px;
     }
 
-    .chapter-body a { color: #555; }
+    .chapter-host {
+      display: block;
+      margin-bottom: 56px;
+    }
   </style>
   <script>
+    // Reader settings — update via applyReaderConfig() at any time
+    const readerConfig = {
+      fontSize:         18,
+      lineHeight:       1.5,
+      marginHorizontal: 20,
+      fontFamily:       "Georgia, 'Times New Roman', serif",
+      color:            '#1c1c1e',
+    };
+
+    function buildShadowStyles(cfg) {
+      return `
+        :host { display: block; }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        .chapter-body {
+          padding: 0 ${cfg.marginHorizontal}px;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          font-size: ${cfg.fontSize}px;
+          color: ${cfg.color};
+        }
+
+        /* Base typography */
+        .chapter-body,
+        .chapter-body p,
+        .chapter-body span,
+        .chapter-body div,
+        .chapter-body li,
+        .chapter-body blockquote {
+          font-family: ${cfg.fontFamily};
+          line-height: ${cfg.lineHeight};
+          font-size: ${cfg.fontSize}px;
+        }
+
+        /* Headings scale proportionally */
+        .chapter-body h1 { font-size: ${Math.round(cfg.fontSize * 1.8)}px !important; }
+        .chapter-body h2 { font-size: ${Math.round(cfg.fontSize * 1.5)}px !important; }
+        .chapter-body h3 { font-size: ${Math.round(cfg.fontSize * 1.25)}px !important; }
+        .chapter-body h4,
+        .chapter-body h5,
+        .chapter-body h6 { font-size: ${Math.round(cfg.fontSize * 1.1)}px !important; }
+
+        .chapter-body img {
+          max-width: 100% !important;
+          height: auto !important;
+          display: block;
+          margin: 16px auto;
+        }
+      `;
+    }
+
+    // Keeps shadow references so styles can be updated live
+    const shadowRoots = [];
+
     function decodeB64(b64) {
       const bytes = atob(b64);
       const arr   = new Uint8Array(bytes.length);
@@ -43,15 +86,37 @@
 
     function appendChapter(htmlB64) {
       const container = document.getElementById('content');
-      const section   = document.createElement('section');
-      section.className = 'chapter';
-      section.innerHTML =
-        '<div class="chapter-body">'  + decodeB64(htmlB64)  + '</div>';
-      container.appendChild(section);
+
+      const host = document.createElement('section');
+      host.className = 'chapter-host';
+      container.appendChild(host);
+
+      const shadow = host.attachShadow({ mode: 'closed' });
+
+      const styleTag = document.createElement('style');
+      styleTag.textContent = buildShadowStyles(readerConfig);
+
+      const body = document.createElement('div');
+      body.className = 'chapter-body';
+      body.innerHTML = decodeB64(htmlB64);
+
+      shadow.appendChild(styleTag);
+      shadow.appendChild(body);
+
+      shadowRoots.push({ shadow, styleTag });
+    }
+
+    // Call from the native app to update font size, margins, etc. without reloading
+    function applyReaderConfig(newConfig) {
+      Object.assign(readerConfig, newConfig);
+      const styles = buildShadowStyles(readerConfig);
+      shadowRoots.forEach(({ styleTag }) => {
+        styleTag.textContent = styles;
+      });
     }
   </script>
 </head>
 <body>
-  <div id="content"></div>
+<div id="content"></div>
 </body>
 </html>
