@@ -64,6 +64,7 @@ fun EpubReaderContent(
                         loadWithOverviewMode = true
                         setSupportZoom(false)
                         allowFileAccess = false
+                        overScrollMode = WebView.OVER_SCROLL_NEVER
                         setBackgroundColor(android.graphics.Color.TRANSPARENT)
                         background = null
                     }
