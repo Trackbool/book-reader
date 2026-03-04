@@ -75,6 +75,13 @@
       shadowRoot.appendChild(section);
     }
 
+    function scrollToId(id, offset = 40) {
+      const el = shadowRoot.getElementById(id);
+      if (!el) return;
+      const top = el.getBoundingClientRect().top + window.scrollY - offset;
+      window.scrollTo({ top, behavior: 'instant' });
+    }
+
     document.addEventListener('DOMContentLoaded', initShadow);
   </script>
 </head>
