@@ -17,11 +17,11 @@ import com.trackbool.bookreader.viewmodel.BookReaderViewModel
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
-    startDestination: String = AppScreens.BookListScreen.route
+    startDestination: String = AppScreens.BookListScreen.route,
 ) {
     NavHost(
         navController = navController,
-        startDestination = startDestination
+        startDestination = startDestination,
     ) {
         composable(route = AppScreens.BookListScreen.route) {
             val viewModel: BookListViewModel = hiltViewModel()
@@ -53,28 +53,25 @@ fun AppNavGraph(
                 selectedBooks = selectedBooks,
                 onToggleBookSelection = viewModel::toggleBookSelection,
                 onClearSelection = viewModel::clearSelection,
-                onEnterSelectionMode = viewModel::enterSelectionMode
+                onEnterSelectionMode = viewModel::enterSelectionMode,
             )
         }
 
         composable(
             route = AppScreens.BookReaderScreen.route,
-            arguments = listOf(navArgument("bookId") { type = NavType.LongType })
-        ) { _ ->
+            arguments = listOf(navArgument("bookId") { type = NavType.LongType }),
+        ) {
             val viewModel: BookReaderViewModel = hiltViewModel()
             val book by viewModel.book.collectAsState()
             val chapters by viewModel.chapters.collectAsState()
             val isLoading by viewModel.isLoading.collectAsState()
-            val hasMoreChapters by viewModel.hasMoreChapters.collectAsState()
 
             book?.let {
                 BookReaderScreen(
                     book = it,
                     chapters = chapters,
                     isLoading = isLoading,
-                    hasMoreChapters = hasMoreChapters,
-                    onLoadMore = { viewModel.loadNextChapters() },
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
                 )
             }
         }

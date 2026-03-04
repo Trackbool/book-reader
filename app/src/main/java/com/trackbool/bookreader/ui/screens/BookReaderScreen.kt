@@ -19,7 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.trackbool.bookreader.R
 import com.trackbool.bookreader.domain.model.Book
-import com.trackbool.bookreader.ui.components.BookFormatRouter
+import com.trackbool.bookreader.ui.components.BookContent
 import com.trackbool.bookreader.ui.components.LoadingIndicator
 import com.trackbool.bookreader.ui.model.ChapterView
 
@@ -29,10 +29,8 @@ fun BookReaderScreen(
     book: Book,
     chapters: List<ChapterView>,
     isLoading: Boolean,
-    hasMoreChapters: Boolean,
-    onLoadMore: () -> Unit,
     onBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Scaffold(
         topBar = {
@@ -41,40 +39,37 @@ fun BookReaderScreen(
                     Text(
                         text = book.title,
                         style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1
+                        maxLines = 1,
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = "Back",
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ),
             )
         },
-        modifier = modifier
+        modifier = modifier,
     ) { paddingValues ->
         when {
             isLoading && chapters.isEmpty() -> {
                 LoadingIndicator(modifier = Modifier.padding(paddingValues))
             }
             chapters.isNotEmpty() -> {
-                BookFormatRouter(
+                BookContent(
                     book = book,
                     chapters = chapters,
-                    isLoading = isLoading,
-                    hasMoreChapters = hasMoreChapters,
-                    onLoadMore = onLoadMore,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues)
+                        .padding(paddingValues),
                 )
             }
             else -> {
@@ -82,7 +77,7 @@ fun BookReaderScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(stringResource(R.string.reader_error_loading_content))
                 }

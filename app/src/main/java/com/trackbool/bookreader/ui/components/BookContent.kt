@@ -12,22 +12,15 @@ import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.ui.model.ChapterView
 
 @Composable
-fun BookFormatRouter(
+fun BookContent(
     book: Book,
     chapters: List<ChapterView>,
-    isLoading: Boolean,
-    hasMoreChapters: Boolean,
-    onLoadMore: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     when (book.fileType) {
         BookFileType.EPUB -> EpubReaderContent(
-            book = book,
             chapters = chapters,
-            hasMoreChapters = hasMoreChapters,
-            isLoadingMore = isLoading,
-            onLoadMore = onLoadMore,
-            modifier = modifier
+            modifier = modifier,
         )
         BookFileType.PDF -> {
             // TODO: PdfReaderContent(book, chapters, modifier)
@@ -42,12 +35,12 @@ fun BookFormatRouter(
 @Composable
 private fun UnsupportedFormatMessage(
     format: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(
             text = "Format '$format' is not supported.",
-            style = MaterialTheme.typography.bodyMedium
+            style = MaterialTheme.typography.bodyMedium,
         )
     }
 }

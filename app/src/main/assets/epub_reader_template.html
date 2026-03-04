@@ -12,7 +12,7 @@
       font-size: 18px;
       line-height: 1.75;
       color: #1c1c1e;
-      background: #fafaf8;
+      background: transparent;
       padding: 24px 20px 48px;
       word-wrap: break-word;
       overflow-wrap: break-word;
@@ -20,14 +20,6 @@
     }
 
     .chapter { margin-bottom: 56px; }
-
-    .chapter-title {
-      font-size: 1.25em;
-      font-weight: 700;
-      margin-bottom: 20px;
-      text-align: center;
-      color: #333;
-    }
 
     .chapter-body p  { margin-bottom: 1em; text-indent: 1.5em; }
     .chapter-body p:first-child { text-indent: 0; }
@@ -40,14 +32,6 @@
     }
 
     .chapter-body a { color: #555; }
-
-    #loader {
-      text-align: center;
-      padding: 32px 0;
-      color: #aaa;
-      font-style: italic;
-      font-size: 0.9em;
-    }
   </style>
   <script>
     function decodeB64(b64) {
@@ -65,24 +49,9 @@
         '<div class="chapter-body">'  + decodeB64(htmlB64)  + '</div>';
       container.appendChild(section);
     }
-
-    /* Throttled scroll listener – triggers chapter pre-fetch 400 px before end. */
-    let ticking = false;
-    window.addEventListener('scroll', function () {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(function () {
-        const remaining = document.documentElement.scrollHeight
-                        - window.scrollY
-                        - window.innerHeight;
-        if (remaining < 400) NativeApp.onNearBottom();
-        ticking = false;
-      });
-    }, { passive: true });
   </script>
 </head>
 <body>
   <div id="content"></div>
-  <div id="loader">Cargando…</div>
 </body>
 </html>
