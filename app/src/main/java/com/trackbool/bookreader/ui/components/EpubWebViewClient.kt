@@ -5,7 +5,10 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.ZipFile
+
+private val zipFileCache = ConcurrentHashMap<String, ZipFile>()
 
 internal class EpubWebViewClient(
     private val onPageReady: () -> Unit,
@@ -29,7 +32,7 @@ internal class EpubWebViewClient(
             val bookPath = raw.substring(0, separatorIndex)
             val entryPath = raw.substring(separatorIndex + 1)
 
-            val zip = ZipFile(bookPath)
+            val zip = zipFileCache.getOrPut(bookPath) { ZipFile(bookPath) }
             val entry = zip.getEntry(entryPath) ?: return null
 
             val extension = entryPath.substringAfterLast('.', missingDelimiterValue = "")
@@ -40,6 +43,13 @@ internal class EpubWebViewClient(
             WebResourceResponse(mimeType, "UTF-8", zip.getInputStream(entry))
         } catch (e: Exception) {
             null
+        }
+    }
+
+    companion object {
+        fun closeAll() {
+            zipFileCache.values.forEach { it.close() }
+            zipFileCache.clear()
         }
     }
 

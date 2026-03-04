@@ -48,7 +48,10 @@ fun EpubReaderContent(
     }
 
     DisposableEffect(Unit) {
-        onDispose { webView?.destroy() }
+        onDispose {
+            webView?.destroy()
+            EpubWebViewClient.closeAll()
+        }
     }
 
     Box(modifier = modifier) {
