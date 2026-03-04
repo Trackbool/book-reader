@@ -4,12 +4,12 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.trackbool.bookreader.domain.model.Book
-import com.trackbool.bookreader.domain.repository.BookRepository
+import com.trackbool.bookreader.domain.model.BookFileType
+import com.trackbool.bookreader.domain.model.ChapterContent
 import com.trackbool.bookreader.domain.usecase.GetBookUseCase
 import com.trackbool.bookreader.domain.usecase.GetChapterCountUseCase
 import com.trackbool.bookreader.domain.usecase.GetChapterUseCase
 import com.trackbool.bookreader.ui.model.ChapterView
-import com.trackbool.bookreader.ui.parser.BookContentRenderParserFactory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -29,7 +29,6 @@ class BookReaderViewModel @Inject constructor(
     private val getBookUseCase: GetBookUseCase,
     private val getChapterUseCase: GetChapterUseCase,
     private val getChapterCountUseCase: GetChapterCountUseCase,
-    private val bookContentRenderParserFactory: BookContentRenderParserFactory
 ) : ViewModel() {
 
     private val bookId: Long = savedStateHandle.get<Long>("bookId") ?: -1
@@ -86,8 +85,6 @@ class BookReaderViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
 
-            val contentParser = bookContentRenderParserFactory.getParser(currentBook.fileType)
-
             val indicesToLoad = (currentChapterIndex until currentChapterIndex + chaptersToLoad).toList()
             currentChapterIndex += chaptersToLoad
 
@@ -95,11 +92,10 @@ class BookReaderViewModel @Inject constructor(
                 .map { index ->
                     async {
                         val chapter = getChapterUseCase(currentBook, index) ?: return@async null
-                        val parsedItems = contentParser?.parse(chapter.content) ?: emptyList()
                         ChapterView(
                             id = "${currentBook.id}_$index",
                             title = chapter.metadata.title,
-                            items = parsedItems
+                            content = chapterContentFor(currentBook, chapter.content, index)
                         )
                     }
                 }
@@ -115,5 +111,18 @@ class BookReaderViewModel @Inject constructor(
             _isLoading.value = false
             isLoadingChapters = false
         }
+    }
+
+    private fun chapterContentFor(
+        book: Book,
+        rawContent: String,
+        chapterIndex: Int
+    ): ChapterContent = when (book.fileType) {
+        BookFileType.EPUB -> ChapterContent.Html(rawContent)
+        BookFileType.PDF  -> ChapterContent.Pdf(
+            filePath = book.filePath,
+            pageRange = chapterIndex..chapterIndex
+        )
+        BookFileType.NONE -> ChapterContent.Html(rawContent)
     }
 }

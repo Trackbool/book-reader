@@ -11,9 +11,6 @@ import com.trackbool.bookreader.domain.parser.content.BookContentParser
 import com.trackbool.bookreader.domain.parser.content.BookContentParserFactory
 import com.trackbool.bookreader.domain.parser.metadata.BookMetadataParser
 import com.trackbool.bookreader.domain.parser.metadata.BookMetadataParserFactory
-import com.trackbool.bookreader.ui.parser.BookContentRenderParserFactory
-import com.trackbool.bookreader.ui.parser.BookContentRenderParserFactoryImpl
-import com.trackbool.bookreader.ui.parser.EpubContentRenderParser
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -84,20 +81,6 @@ abstract class ParserModule {
                 BookFileType.EPUB to epubParser,
                 BookFileType.PDF to pdfParser
             )
-        }
-
-        @Provides
-        @Singleton
-        fun provideEpubRenderParser(): EpubContentRenderParser {
-            return EpubContentRenderParser()
-        }
-
-        @Provides
-        @Singleton
-        fun provideContentParserFactory(
-            factoryImpl: BookContentRenderParserFactoryImpl
-        ): BookContentRenderParserFactory {
-            return factoryImpl
         }
     }
 }
