@@ -16,7 +16,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import com.trackbool.bookreader.R
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.model.ChapterContent
 import com.trackbool.bookreader.ui.model.ChapterView
@@ -43,9 +45,6 @@ private class EpubJsBridge(private val state: EpubReaderState) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Composable
-// ---------------------------------------------------------------------------
 @Composable
 fun EpubReaderContent(
     book: Book,
@@ -56,6 +55,13 @@ fun EpubReaderContent(
     modifier: Modifier = Modifier,
 ) {
     val state = remember { EpubReaderState() }
+    val context = LocalContext.current
+    val readerHtml = remember {
+        context.assets
+            .open("epub_reader_template.html")
+            .bufferedReader()
+            .use { it.readText() }
+    }
     state.hasMoreChapters = hasMoreChapters
     state.isLoadingMore = isLoadingMore
     state.onLoadMore = onLoadMore
@@ -88,7 +94,6 @@ fun EpubReaderContent(
                     useWideViewPort = true
                     loadWithOverviewMode = true
                     setSupportZoom(false)
-                    // Disable file access – content is injected programmatically.
                     allowFileAccess = false
                 }
 
@@ -108,7 +113,7 @@ fun EpubReaderContent(
 
                 loadDataWithBaseURL(
                     /* baseUrl  */ "epub://content/",
-                    /* data     */ buildReaderHtml(),
+                    /* data     */ readerHtml,
                     /* mimeType */ "text/html",
                     /* encoding */ "UTF-8",
                     /* histUrl  */ null,
@@ -121,99 +126,5 @@ fun EpubReaderContent(
     )
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 private fun ByteArray.toBase64(): String =
     Base64.encodeToString(this, Base64.NO_WRAP)
-
-private fun buildReaderHtml(): String = """
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: Georgia, 'Times New Roman', serif;
-      font-size: 18px;
-      line-height: 1.75;
-      color: #1c1c1e;
-      background: #fafaf8;
-      padding: 24px 20px 48px;
-      word-wrap: break-word;
-      overflow-wrap: break-word;
-      -webkit-text-size-adjust: 100%;
-    }
-
-    .chapter { margin-bottom: 56px; }
-
-    .chapter-title {
-      font-size: 1.25em;
-      font-weight: 700;
-      margin-bottom: 20px;
-      text-align: center;
-      color: #333;
-    }
-
-    .chapter-body p  { margin-bottom: 1em; text-indent: 1.5em; }
-    .chapter-body p:first-child { text-indent: 0; }
-
-    .chapter-body img {
-      max-width: 100%;
-      height: auto;
-      display: block;
-      margin: 16px auto;
-    }
-
-    .chapter-body a { color: #555; }
-
-    #loader {
-      text-align: center;
-      padding: 32px 0;
-      color: #aaa;
-      font-style: italic;
-      font-size: 0.9em;
-    }
-  </style>
-  <script>
-    function decodeB64(b64) {
-      const bytes = atob(b64);
-      const arr   = new Uint8Array(bytes.length);
-      for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-      return new TextDecoder('utf-8').decode(arr);
-    }
-
-    function appendChapter(htmlB64) {
-      const container = document.getElementById('content');
-      const section   = document.createElement('section');
-      section.className = 'chapter';
-      section.innerHTML =
-        '<div class="chapter-body">'  + decodeB64(htmlB64)  + '</div>';
-      container.appendChild(section);
-    }
-
-    /* Throttled scroll listener – triggers chapter pre-fetch 400 px before end. */
-    let ticking = false;
-    window.addEventListener('scroll', function () {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(function () {
-        const remaining = document.documentElement.scrollHeight
-                        - window.scrollY
-                        - window.innerHeight;
-        if (remaining < 400) NativeApp.onNearBottom();
-        ticking = false;
-      });
-    }, { passive: true });
-  </script>
-</head>
-<body>
-  <div id="content"></div>
-  <div id="loader">Cargando…</div>
-</body>
-</html>
-""".trimIndent()
