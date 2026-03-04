@@ -83,44 +83,63 @@ class EpubContentParser : BookContentParser {
                     title = extractChapterTitle(rawContent),
                     chapterIndex = index
                 ),
-                content = rewriteImageSrcs(rawContent, chapterDir, filePath)
+                content = rewriteResourceUrls(rawContent, chapterDir, filePath)
             )
         }
     }
 
     /**
-     * Rewrites relative <img src> paths to a custom URI scheme:
+     * Rewrites all relative resource references to the custom epub:// scheme
+     * so that WebView can intercept and serve them from the ZIP via shouldInterceptRequest.
      *
-     *   ../images/cover.jpg  ->  epub:///abs/path/to/book.epub!OEBPS/images/cover.jpg
+     * Covers:
+     *   <img src>                  — raster images
+     *   <image xlink:href>         — SVG images (cover pages)
+     *   <link href>                — stylesheets
+     *   <script src>               — javascript
+     *   <audio src>, <video src>   — media
+     *   <source src>               — media sources
      *
-     * Skips already-absolute URIs (data:, http:, epub://).
+     * Skips already-absolute URIs (epub://, data:, http:, https:, //).
      */
-    private fun rewriteImageSrcs(
+    private fun rewriteResourceUrls(
         html: String,
         chapterDir: String,
         filePath: String
     ): String {
         val doc = Jsoup.parse(html)
-        doc.select("img[src]").forEach { img ->
-            val src = img.attr("src")
-            if (!src.startsWith("epub://") && !src.startsWith("data:") && !src.startsWith("http")) {
-                val rawZipPath = resolvePath(chapterDir, src)
-                val normalizedZipPath = normalizePath(rawZipPath)
-                img.attr("src", "epub://$filePath!$normalizedZipPath")
-            }
-        }
 
-        // SVG <image xlink:href="..."> — used for cover images in many EPUBs
-        doc.select("image[xlink:href]").forEach { image ->
-            val href = image.attr("xlink:href")
-            if (!href.startsWith("epub://") && !href.startsWith("data:") && !href.startsWith("http")) {
-                val normalizedZipPath = normalizePath(resolvePath(chapterDir, href))
-                image.attr("xlink:href", "epub://$filePath!$normalizedZipPath")
+        // selector -> attribute pairs to rewrite
+        val targets = listOf(
+            "img[src]"          to "src",
+            "image[xlink:href]" to "xlink:href",
+            "link[href]"        to "href",
+            "script[src]"       to "src",
+            "audio[src]"        to "src",
+            "video[src]"        to "src",
+            "source[src]"       to "src",
+        )
+
+        targets.forEach { (selector, attr) ->
+            doc.select(selector).forEach { element ->
+                val original = element.attr(attr)
+                if (!original.isAbsoluteUri()) {
+                    val resolved = normalizePath(resolvePath(chapterDir, original))
+                    element.attr(attr, "epub://$filePath!$resolved")
+                }
             }
         }
 
         return doc.toString()
     }
+
+    private fun String.isAbsoluteUri(): Boolean =
+        startsWith("epub://")
+                || startsWith("data:")
+                || startsWith("http:")
+                || startsWith("https:")
+                || startsWith("//")
+                || isEmpty()
 
     /**
      * Resolves ".." and "." segments in a ZIP entry path.
