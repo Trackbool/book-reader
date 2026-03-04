@@ -51,7 +51,7 @@ internal class EpubWebViewClient(
         return when (uri.scheme) {
             "epub" if uri.fragment != null -> {
                 view.evaluateJavascript(
-                    "document.getElementById('${uri.fragment}')?.scrollIntoView({behavior:'smooth'});",
+                    "document.getElementById('content').shadowRoot.getElementById('${uri.fragment}')?.scrollIntoView({behavior:'smooth'});",
                     null,
                 )
                 true

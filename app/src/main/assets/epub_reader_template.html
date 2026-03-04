@@ -6,34 +6,52 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
-      font-family: Georgia, 'Times New Roman', serif;
-      font-size: 18px;
-      line-height: 1.75;
-      color: #1c1c1e;
       background: transparent;
       padding: 24px 20px 48px;
       word-wrap: break-word;
       overflow-wrap: break-word;
       -webkit-text-size-adjust: 100%;
     }
-
-    .chapter { margin-bottom: 56px; }
-
-    .chapter-body p  { margin-bottom: 1em; text-indent: 1.5em; }
-    .chapter-body p:first-child { text-indent: 0; }
-
-    .chapter-body img {
-      max-width: 100%;
-      height: auto;
-      display: block;
-      margin: 16px auto;
-    }
-
-    .chapter-body a { color: #555; }
+    #content { display: block; }
   </style>
   <script>
+    let shadowRoot;
+
+    function initShadow() {
+      const host = document.getElementById('content');
+      shadowRoot = host.attachShadow({ mode: 'open' });
+
+      const style = document.createElement('style');
+      style.textContent = `
+        :host { display: block; }
+
+        * { box-sizing: border-box; }
+
+        section * {
+          margin: 0;
+          padding: 0;
+          font-size: revert;
+          max-width: 100%;
+        }
+
+        section {
+          font-family: Georgia, 'Times New Roman', serif;
+          font-size: 18px;
+          line-height: 1.75;
+          color: #1c1c1e;
+          margin-bottom: 56px;
+        }
+
+        p               { margin-bottom: 1em; text-indent: 1.5em; }
+        p:first-child   { text-indent: 0; }
+        h1, h2, h3      { margin: 1.2em 0 0.4em; }
+        blockquote      { margin: 1em 1.5em; }
+        img             { height: auto; display: block; margin: 16px auto; }
+      `;
+      shadowRoot.appendChild(style);
+    }
+
     function decodeB64(b64) {
       const bytes = atob(b64);
       const arr   = new Uint8Array(bytes.length);
@@ -42,16 +60,15 @@
     }
 
     function appendChapter(htmlB64) {
-      const container = document.getElementById('content');
-      const section   = document.createElement('section');
-      section.className = 'chapter';
-      section.innerHTML =
-        '<div class="chapter-body">'  + decodeB64(htmlB64)  + '</div>';
-      container.appendChild(section);
+      const section = document.createElement('section');
+      section.innerHTML = decodeB64(htmlB64);
+      shadowRoot.appendChild(section);
     }
+
+    document.addEventListener('DOMContentLoaded', initShadow);
   </script>
 </head>
 <body>
-  <div id="content"></div>
+<div id="content"></div>
 </body>
 </html>
