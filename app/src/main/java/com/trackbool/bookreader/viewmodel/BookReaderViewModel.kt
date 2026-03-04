@@ -57,8 +57,8 @@ class BookReaderViewModel @Inject constructor(
             _chapters.value = content?.chapters
                 ?.mapIndexed { index, chapter ->
                     ChapterView(
-                        id = "${book.id}_$index",
                         title = chapter.metadata.title.orEmpty(),
+                        reference = chapter.metadata.reference,
                         content = chapterContentFor(book, chapter.content, index),
                     )
                 }

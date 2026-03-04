@@ -1,5 +1,7 @@
 package com.trackbool.bookreader.ui.components
 
+import android.content.Intent
+import android.util.Log
 import android.webkit.MimeTypeMap
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -58,16 +60,20 @@ internal class EpubWebViewClient(
         request: WebResourceRequest,
     ): Boolean {
         val uri = request.url
-        return when (uri.scheme) {
-            "epub" if uri.fragment != null -> {
-                view.evaluateJavascript(
-                    "scrollToId('${uri.fragment}');",
-                    null,
-                )
-                true
+
+        Log.d(javaClass.toString(), "URL clicked: $uri | scheme: ${uri.scheme}")
+        when (uri.scheme) {
+            "http", "https" -> {
+                val intent = Intent(Intent.ACTION_VIEW, uri)
+                view.context.startActivity(intent)
             }
-            "epub" -> true
-            else -> true
+            "epub" -> {
+                val id = uri.fragment ?: uri.lastPathSegment ?: return true
+                Log.d(javaClass.toString(), "Id: $id")
+                view.evaluateJavascript("scrollToId('$id');", null)
+            }
         }
+
+        return true
     }
 }

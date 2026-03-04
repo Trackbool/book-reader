@@ -81,6 +81,7 @@ class EpubContentParser : BookContentParser {
             Chapter(
                 metadata = ChapterMetadata(
                     title = extractChapterTitle(rawContent),
+                    reference = href,
                     chapterIndex = index
                 ),
                 content = rewriteResourceUrls(rawContent, chapterDir, filePath)

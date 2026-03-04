@@ -70,8 +70,9 @@
       return new TextDecoder('utf-8').decode(arr);
     }
 
-    function appendChapter(htmlB64) {
+    function appendChapter(id, htmlB64) {
       const section = document.createElement('section');
+      section.id = id;
       section.innerHTML = decodeB64(htmlB64);
       shadowRoot.appendChild(section);
     }

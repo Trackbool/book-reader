@@ -42,7 +42,7 @@ fun EpubReaderContent(
         chapters.forEach { chapter ->
             val html = (chapter.content as? ChapterContent.Html)?.html.orEmpty()
             val htmlB64 = html.toByteArray(Charsets.UTF_8).toBase64()
-            wv.evaluateJavascript("appendChapter('$htmlB64');", null)
+            wv.evaluateJavascript("appendChapter('${chapter.reference}', '$htmlB64');", null)
         }
         contentInjected = true
     }
