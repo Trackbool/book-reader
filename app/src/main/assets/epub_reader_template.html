@@ -28,6 +28,7 @@
 
         * { box-sizing: border-box; }
 
+        /* Reset */
         section * {
           margin: 0;
           padding: 0;
@@ -37,17 +38,26 @@
 
         section {
           font-family: Georgia, 'Times New Roman', serif;
-          font-size: 18px;
+          font-size: 20px;
           line-height: 1.75;
           color: #1c1c1e;
           margin-bottom: 56px;
         }
 
-        p               { margin-bottom: 1em; text-indent: 1.5em; }
-        p:first-child   { text-indent: 0; }
-        h1, h2, h3      { margin: 1.2em 0 0.4em; }
-        blockquote      { margin: 1em 1.5em; }
-        img             { height: auto; display: block; margin: 16px auto; }
+        section p             { margin-bottom: 1em; text-indent: 1.5em; }
+        section p:first-child { text-indent: 0; }
+        section h1            { margin: 1.4em 0 0.5em; font-size: 1.6em; }
+        section h2            { margin: 1.2em 0 0.4em; font-size: 1.35em; }
+        section h3            { margin: 1em 0 0.3em; font-size: 1.15em; }
+        section h4, section h5, section h6 { margin: 0.8em 0 0.2em; }
+        section blockquote    { margin: 1em 1.5em; padding-left: 1em; border-left: 3px solid #ccc; }
+        section ul, section ol { margin: 0.8em 0; padding-left: 2em; }
+        section li            { margin-bottom: 0.3em; }
+        section img           { height: auto; display: block; margin: 16px auto; }
+        section a             { color: #555; }
+        section hr            { margin: 2em 0; border: none; border-top: 1px solid #ddd; }
+        section pre, section code { font-family: monospace; font-size: 0.9em; }
+        section pre           { margin: 1em 0; padding: 1em; overflow-x: auto; }
       `;
       shadowRoot.appendChild(style);
     }
