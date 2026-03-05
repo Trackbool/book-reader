@@ -9,12 +9,10 @@ import android.webkit.WebView
 internal class EpubNavigationHandler(private val context: Context) {
 
     fun handle(view: WebView, uri: Uri): Boolean {
-        Log.d(TAG, "URL clicked: $uri | scheme: ${uri.scheme}")
+        Log.d(TAG, "URL intercepted: $uri | scheme: ${uri.scheme}")
         return when (uri.scheme) {
             "epub" -> {
-                val id = uri.fragment ?: uri.lastPathSegment ?: return true
-                Log.d(TAG, "Navigating to id: $id")
-                view.evaluateJavascript("navigateToId('$id');", null)
+                Log.w(TAG, "Blocked unresolved epub link: $uri")
                 true
             }
             "http", "https" -> {

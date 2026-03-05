@@ -16,16 +16,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
-import com.trackbool.bookreader.data.epub.EpubAssetResolverFactory
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.model.ChapterContent
 import com.trackbool.bookreader.ui.components.LoadingIndicator
 import com.trackbool.bookreader.ui.epub.EpubWebViewClient
 import com.trackbool.bookreader.ui.model.ChapterView
-import dagger.hilt.EntryPoint
-import dagger.hilt.InstallIn
-import dagger.hilt.android.EntryPointAccessors
-import dagger.hilt.components.SingletonComponent
 
 @Composable
 fun EpubReaderContent(
@@ -54,7 +49,7 @@ fun EpubReaderContent(
         chapters.forEach { chapter ->
             val html = (chapter.content as? ChapterContent.Html)?.html.orEmpty()
             val htmlB64 = html.toByteArray(Charsets.UTF_8).toBase64()
-            wv.evaluateJavascript("appendChapter('${chapter.reference}', '$htmlB64');", null)
+            wv.evaluateJavascript("appendChapter('${chapter.id}', '$htmlB64');", null)
         }
         contentInjected = true
     }

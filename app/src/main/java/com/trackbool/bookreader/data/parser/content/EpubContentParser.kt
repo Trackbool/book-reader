@@ -9,6 +9,7 @@ import com.trackbool.bookreader.domain.model.ChapterMetadata
 import com.trackbool.bookreader.domain.model.BookContent
 import com.trackbool.bookreader.domain.parser.content.BookContentParser
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import org.jsoup.parser.Parser
 import java.io.File
 import java.util.zip.ZipFile
@@ -51,15 +52,20 @@ class EpubContentParser : BookContentParser {
      * Builds the chapter list from the OPF spine, which defines reading order:
      *
      *   <manifest>
-     *     <item id="chapter1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>
+     *     <item id="c001" href="xhtml/chapter1.xhtml" media-type="application/xhtml+xml"/>
      *   </manifest>
      *   <spine>
-     *     <itemref idref="chapter1"/>
-     *     <itemref idref="chapter2"/>
+     *     <itemref idref="c001"/>
      *   </spine>
      *
-     * Each spine itemref points to a manifest item by id. The manifest item
-     * provides the href to the actual HTML file inside the ZIP.
+     * The manifest item id (idref) is used as the canonical DOM id for each chapter <section>.
+     * It is unique within the EPUB by spec, and stable across parse runs.
+     *
+     * All internal ids within each chapter are prefixed with their chapter's manifestId
+     * (e.g. "intro" → "c001__intro") to guarantee uniqueness across the merged shadow DOM.
+     *
+     * All internal <a href> links are rewritten to plain #id anchors at parse time,
+     * so no URI resolution is needed at navigation time.
      */
     private fun parseChapters(
         opfDirectory: String,
@@ -71,9 +77,15 @@ class EpubContentParser : BookContentParser {
         val spine = doc.select("spine itemref")
         val manifest = doc.select("manifest item").associateBy { it.id() }
 
+        // Map of OPF-relative href → manifestId, used to resolve cross-chapter navigation links.
+        // e.g. "xhtml/chapter1.xhtml" → "c001"
+        val hrefToManifestId: Map<String, String> = manifest.values
+            .associate { item -> item.attr("href") to item.id() }
+
         return spine.mapIndexedNotNull { index, itemref ->
             val idref = itemref.attr("idref")
-            val href = manifest[idref]?.attr("href") ?: return@mapIndexedNotNull null
+            val item = manifest[idref] ?: return@mapIndexedNotNull null
+            val href = item.attr("href")
             val chapterPath = resolvePath(opfDirectory, href)
             val rawContent = zip.readEpubEntryAsString(chapterPath) ?: ""
             val chapterDir = chapterPath.substringBeforeLast("/", "")
@@ -81,17 +93,49 @@ class EpubContentParser : BookContentParser {
             Chapter(
                 metadata = ChapterMetadata(
                     title = extractChapterTitle(rawContent),
-                    reference = href,
+                    id = idref,
                     chapterIndex = index
                 ),
-                content = rewriteResourceUrls(rawContent, chapterDir, filePath)
+                content = rewriteUrls(
+                    html = rawContent,
+                    manifestId = idref,
+                    chapterDir = chapterDir,
+                    opfDirectory = opfDirectory,
+                    filePath = filePath,
+                    hrefToManifestId = hrefToManifestId
+                )
             )
         }
     }
 
     /**
-     * Rewrites all relative resource references to the custom epub:// scheme
-     * so that WebView can intercept and serve them from the ZIP via shouldInterceptRequest.
+     * Rewrites all URLs and ids in the chapter HTML, in order:
+     *
+     *   1. rewriteResourceUrls    — asset refs (img/link/script/…) → epub:// scheme
+     *   2. prefixInternalIds      — all [id] attributes → manifestId__id
+     *   3. rewriteNavigationLinks — <a href> internal links → #manifestId or #manifestId__fragment
+     *
+     * Order matters: prefixInternalIds must run before rewriteNavigationLinks so that
+     * local anchor links (#fragment) are rewritten consistently with the already-prefixed ids.
+     */
+    private fun rewriteUrls(
+        html: String,
+        manifestId: String,
+        chapterDir: String,
+        opfDirectory: String,
+        filePath: String,
+        hrefToManifestId: Map<String, String>
+    ): String {
+        val doc = Jsoup.parse(html)
+        rewriteResourceUrls(doc, chapterDir, filePath)
+        prefixInternalIds(doc, manifestId)
+        rewriteNavigationLinks(doc, manifestId, chapterDir, opfDirectory, hrefToManifestId)
+        return doc.toString()
+    }
+
+    /**
+     * Rewrites resource references to the epub:// scheme so WebView can serve them
+     * from the ZIP via shouldInterceptRequest.
      *
      * Covers:
      *   <img src>                  — raster images
@@ -103,14 +147,7 @@ class EpubContentParser : BookContentParser {
      *
      * Skips already-absolute URIs (epub://, data:, http:, https:, //).
      */
-    private fun rewriteResourceUrls(
-        html: String,
-        chapterDir: String,
-        filePath: String
-    ): String {
-        val doc = Jsoup.parse(html)
-
-        // selector -> attribute pairs to rewrite
+    private fun rewriteResourceUrls(doc: Document, chapterDir: String, filePath: String) {
         val targets = listOf(
             "img[src]"          to "src",
             "image[xlink:href]" to "xlink:href",
@@ -130,8 +167,81 @@ class EpubContentParser : BookContentParser {
                 }
             }
         }
+    }
 
-        return doc.toString()
+    /**
+     * Prefixes all [id] attributes in the chapter with the chapter's manifestId.
+     *
+     * This guarantees uniqueness across all chapters merged in the shadow DOM,
+     * since EPUB only requires id uniqueness within a single file, not across files.
+     *
+     *   <h2 id="intro">  →  <h2 id="c001__intro">
+     *   <p id="para-1">  →  <p id="c001__para-1">
+     *
+     * Must run before rewriteNavigationLinks so that local anchor hrefs (#fragment)
+     * are rewritten consistently with the already-prefixed ids.
+     */
+    private fun prefixInternalIds(doc: Document, manifestId: String) {
+        doc.select("[id]").forEach { el ->
+            el.attr("id", "${manifestId}__${el.id()}")
+        }
+    }
+
+    /**
+     * Rewrites internal <a href> navigation links to plain #id anchors.
+     *
+     * Four cases:
+     *
+     *   1. Cross-chapter link with fragment:
+     *      <a href="chapter2.xhtml#intro">  →  <a href="#c002__intro">
+     *
+     *   2. Cross-chapter link without fragment (link to chapter start):
+     *      <a href="chapter2.xhtml">        →  <a href="#c002">
+     *
+     *   3. Local anchor (same chapter):
+     *      <a href="#intro">                →  <a href="#c001__intro">
+     *      Prefixed with current chapter's manifestId to match prefixInternalIds output.
+     *
+     *   4. Unresolvable or external link: left unchanged.
+     *
+     * After this rewrite, the JS click handler only needs:
+     *   if href.startsWith('#') → navigateToId(href.slice(1))
+     */
+    private fun rewriteNavigationLinks(
+        doc: Document,
+        currentManifestId: String,
+        chapterDir: String,
+        opfDirectory: String,
+        hrefToManifestId: Map<String, String>
+    ) {
+        doc.select("a[href]").forEach { anchor ->
+            val href = anchor.attr("href")
+
+            if (href.isAbsoluteUri() || href.isExternalScheme()) return@forEach
+
+            val hrefPath = href.substringBefore('#')
+            val fragment = href.substringAfter('#', "").takeIf { '#' in href }
+
+            // Case 3: pure local anchor — prefix with current chapter's manifestId
+            if (hrefPath.isEmpty() && fragment != null) {
+                anchor.attr("href", "#${currentManifestId}__${fragment}")
+                return@forEach
+            }
+
+            // Resolve the href path to an OPF-relative path for the manifest lookup
+            val absolutePath = normalizePath(resolvePath(chapterDir, hrefPath))
+            val opfRelativePath = if (opfDirectory.isEmpty()) absolutePath
+            else absolutePath.removePrefix("$opfDirectory/")
+
+            val targetManifestId = hrefToManifestId[opfRelativePath] ?: return@forEach
+
+            anchor.attr("href", when {
+                // Case 1: cross-chapter with fragment
+                fragment != null -> "#${targetManifestId}__${fragment}"
+                // Case 2: cross-chapter without fragment
+                else             -> "#${targetManifestId}"
+            })
+        }
     }
 
     private fun String.isAbsoluteUri(): Boolean =
@@ -141,6 +251,9 @@ class EpubContentParser : BookContentParser {
                 || startsWith("https:")
                 || startsWith("//")
                 || isEmpty()
+
+    private fun String.isExternalScheme(): Boolean =
+        startsWith("mailto:") || startsWith("tel:")
 
     /**
      * Resolves ".." and "." segments in a ZIP entry path.

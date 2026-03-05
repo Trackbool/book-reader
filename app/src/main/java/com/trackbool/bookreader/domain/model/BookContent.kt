@@ -2,7 +2,7 @@ package com.trackbool.bookreader.domain.model
 
 data class ChapterMetadata(
     val title: String?,
-    val reference: String,
+    val id: String,
     val chapterIndex: Int
 )
 
