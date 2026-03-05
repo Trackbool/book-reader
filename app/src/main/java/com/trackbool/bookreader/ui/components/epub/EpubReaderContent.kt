@@ -1,5 +1,6 @@
-package com.trackbool.bookreader.ui.components
+package com.trackbool.bookreader.ui.components.epub
 
+import android.graphics.Color
 import android.util.Base64
 import android.webkit.WebView
 import androidx.compose.foundation.layout.Box
@@ -16,11 +17,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.trackbool.bookreader.domain.model.ChapterContent
+import com.trackbool.bookreader.domain.repository.AssetResolver
+import com.trackbool.bookreader.ui.components.LoadingIndicator
+import com.trackbool.bookreader.ui.epub.EpubWebViewClient
 import com.trackbool.bookreader.ui.model.ChapterView
 
 @Composable
 fun EpubReaderContent(
     chapters: List<ChapterView>,
+    assetResolver: AssetResolver,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -50,7 +55,7 @@ fun EpubReaderContent(
     DisposableEffect(Unit) {
         onDispose {
             webView?.destroy()
-            EpubWebViewClient.closeAll()
+            assetResolver.releaseAll()
         }
     }
 
@@ -65,11 +70,13 @@ fun EpubReaderContent(
                         setSupportZoom(false)
                         allowFileAccess = false
                         overScrollMode = WebView.OVER_SCROLL_NEVER
-                        setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                        setBackgroundColor(Color.TRANSPARENT)
                         background = null
                     }
 
                     webViewClient = EpubWebViewClient(
+                        context = ctx,
+                        assetResolver = assetResolver,
                         onPageReady = { pageReady = true },
                     )
 
