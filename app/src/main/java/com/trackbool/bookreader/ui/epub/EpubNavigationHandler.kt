@@ -21,7 +21,7 @@ internal class EpubNavigationHandler(private val context: Context) {
                 view.evaluateJavascript("navigateToId('$id');", null)
                 true
             }
-            else -> false
+            else -> true
         }
     }
 
