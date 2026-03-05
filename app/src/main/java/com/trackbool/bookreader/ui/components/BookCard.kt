@@ -25,6 +25,7 @@ import android.net.Uri
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.trackbool.bookreader.R
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.model.BookFileType
@@ -155,29 +156,25 @@ private fun BookCoverImage(
         Uri.fromFile(File(context.filesDir, coverUrl)).toString()
     }
 
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant),
-        contentAlignment = Alignment.Center
-    ) {
-        if (coverUrl.isNotEmpty()) {
-            AsyncImage(
-                model = imageUri,
-                contentDescription = stringResource(R.string.book_cover, title),
-                placeholder = painterResource(R.drawable.book_placeholder),
-                error = painterResource(R.drawable.book_placeholder),
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-        } else {
-            Image(
-                painter = painterResource(R.drawable.book_placeholder),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
+    if (coverUrl.isNotEmpty()) {
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data(imageUri)
+                .size(240, 360)
+                .build(),
+            contentDescription = stringResource(R.string.book_cover, title),
+            placeholder = painterResource(R.drawable.book_placeholder),
+            error = painterResource(R.drawable.book_placeholder),
+            contentScale = ContentScale.Crop,
+            modifier = modifier.clip(RoundedCornerShape(8.dp))
+        )
+    } else {
+        Image(
+            painter = painterResource(R.drawable.book_placeholder),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = modifier.clip(RoundedCornerShape(8.dp))
+        )
     }
 }
 

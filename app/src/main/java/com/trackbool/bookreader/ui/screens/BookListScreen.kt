@@ -387,7 +387,8 @@ private fun BooksGrid(
             .fillMaxSize()
             .padding(paddingValues),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(6.dp)
     ) {
         items(books, key = { it.id }) { book ->
             BookCard(
