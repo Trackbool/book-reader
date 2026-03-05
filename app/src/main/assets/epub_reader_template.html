@@ -80,13 +80,36 @@
     function scrollToId(id, offset = 40) {
       const el = shadowRoot.getElementById(id);
       if (!el) return;
+
       const top = el.getBoundingClientRect().top + window.scrollY - offset;
-      window.scrollTo({ top, behavior: 'instant' });
+
+      window.scrollTo({
+        top,
+        behavior: 'instant'
+      });
     }
 
-    document.addEventListener('DOMContentLoaded', initShadow);
+    document.addEventListener('DOMContentLoaded', () => {
+      initShadow();
+
+      shadowRoot.addEventListener('click', (e) => {
+        const a = e.target.closest('a[href]');
+        if (!a) return;
+
+        e.preventDefault();
+
+        const href = a.getAttribute('href');
+
+        if (href.startsWith('#')) {
+          scrollToId(href.slice(1));
+        } else {
+          window.location.href = href;
+        }
+      });
+    });
   </script>
 </head>
+
 <body>
 <div id="content"></div>
 </body>
