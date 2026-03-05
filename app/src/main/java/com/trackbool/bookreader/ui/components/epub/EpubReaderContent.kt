@@ -16,19 +16,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import com.trackbool.bookreader.data.epub.EpubAssetResolverFactory
+import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.model.ChapterContent
-import com.trackbool.bookreader.domain.repository.AssetResolver
 import com.trackbool.bookreader.ui.components.LoadingIndicator
 import com.trackbool.bookreader.ui.epub.EpubWebViewClient
 import com.trackbool.bookreader.ui.model.ChapterView
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 
 @Composable
 fun EpubReaderContent(
+    book: Book,
     chapters: List<ChapterView>,
-    assetResolver: AssetResolver,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val assetResolver = rememberEpubAssetResolver(book.filePath)
+
     val readerHtml = remember {
         context.assets
             .open("epub_reader_template.html")
@@ -55,7 +62,7 @@ fun EpubReaderContent(
     DisposableEffect(Unit) {
         onDispose {
             webView?.destroy()
-            assetResolver.releaseAll()
+            assetResolver.release()
         }
     }
 

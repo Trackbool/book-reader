@@ -1,31 +1,35 @@
 package com.trackbool.bookreader.data.epub
 
 import com.trackbool.bookreader.domain.repository.AssetResolver
+import com.trackbool.bookreader.domain.repository.FileManager
 import java.io.InputStream
-import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.ZipFile
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class EpubAssetResolver @Inject constructor() : AssetResolver {
+class EpubAssetResolver(
+    private val fileManager: FileManager,
+    private val filePath: String,
+) : AssetResolver {
 
-    private val cache = ConcurrentHashMap<String, ZipFile>()
+    private var zipFile: ZipFile? = null
 
-    override fun resolve(bookPath: String, path: String): InputStream? = try {
-        val zip = cache.getOrPut(bookPath) { ZipFile(bookPath) }
+    override fun resolve(path: String): InputStream? = try {
+        val zip = getZipFile() ?: return null
         val entry = zip.getEntry(path) ?: return null
         zip.getInputStream(entry)
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         null
     }
 
-    override fun release(bookPath: String) {
-        cache.remove(bookPath)?.close()
+    override fun release() {
+        zipFile?.close()
+        zipFile = null
     }
 
-    override fun releaseAll() {
-        cache.values.forEach { runCatching { it.close() } }
-        cache.clear()
+    private fun getZipFile(): ZipFile? {
+        if (zipFile == null) {
+            val file = fileManager.getFile(filePath)
+            zipFile = ZipFile(file)
+        }
+        return zipFile
     }
 }

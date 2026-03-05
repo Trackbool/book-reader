@@ -3,7 +3,6 @@ package com.trackbool.bookreader.ui.epub
 import android.webkit.MimeTypeMap
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
-import com.trackbool.bookreader.data.epub.EpubAssetResolver
 import com.trackbool.bookreader.domain.repository.AssetResolver
 
 internal class EpubAssetInterceptor(
@@ -17,10 +16,9 @@ internal class EpubAssetInterceptor(
         val separatorIndex = raw.lastIndexOf('!')
         if (separatorIndex == -1) return null
 
-        val bookPath = raw.substring(0, separatorIndex)
         val entryPath = raw.substring(separatorIndex + 1)
 
-        val stream = assetResolver.resolve(bookPath, entryPath) ?: return null
+        val stream = assetResolver.resolve(entryPath) ?: return null
 
         val extension = entryPath.substringAfterLast('.', missingDelimiterValue = "")
         val mimeType = MimeTypeMap.getSingleton()

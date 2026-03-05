@@ -5,7 +5,6 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import com.trackbool.bookreader.data.epub.EpubAssetResolver
 import com.trackbool.bookreader.domain.repository.AssetResolver
 
 internal class EpubWebViewClient(
