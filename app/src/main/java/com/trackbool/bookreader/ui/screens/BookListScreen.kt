@@ -114,26 +114,26 @@ fun BookListScreen(
         onResetDeleteState = onResetDeleteState
     )
 
-    if (isLoading) {
-        LoadingIndicator()
-    } else {
-        Scaffold(
-            topBar = {
-                BookListTopBar(
-                    isSelectionMode = isSelectionMode,
-                    selectedCount = selectedBooks.size,
-                    onClearSelection = onClearSelection,
-                    onDeleteClick = { showDeleteDialog = true }
-                )
-            },
-            floatingActionButton = {
-                if (!isSelectionMode) {
-                    BookListFab(supportedMimeTypes, onImportBooks)
-                }
-            },
-            snackbarHost = { SnackbarHost(snackBarHostState) },
-            modifier = modifier
-        ) { paddingValues ->
+    Scaffold(
+        topBar = {
+            BookListTopBar(
+                isSelectionMode = isSelectionMode,
+                selectedCount = selectedBooks.size,
+                onClearSelection = onClearSelection,
+                onDeleteClick = { showDeleteDialog = true }
+            )
+        },
+        floatingActionButton = {
+            if (!isSelectionMode) {
+                BookListFab(supportedMimeTypes, onImportBooks)
+            }
+        },
+        snackbarHost = { SnackbarHost(snackBarHostState) },
+        modifier = modifier
+    ) { paddingValues ->
+        if (isLoading) {
+            LoadingIndicator()
+        } else {
             BookListContent(
                 books = books,
                 paddingValues = paddingValues,
