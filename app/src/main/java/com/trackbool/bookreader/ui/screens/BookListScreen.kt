@@ -31,6 +31,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -69,24 +70,7 @@ fun BookListScreen(
     modifier: Modifier = Modifier
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
-    var selectedBookForOptions by remember { mutableStateOf<Book?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-
-    if (selectedBookForOptions != null && !isSelectionMode) {
-        val optionsTitle = stringResource(R.string.book_options)
-        val deleteLabel = stringResource(R.string.delete_from_library)
-
-        OptionsDialog(
-            title = optionsTitle,
-            options = listOf(
-                OptionItem(
-                    label = deleteLabel,
-                    onClick = { selectedBookForOptions?.let { onDeleteBooks(listOf(it)) } }
-                )
-            ),
-            onDismiss = { selectedBookForOptions = null }
-        )
-    }
 
     if (showDeleteDialog && selectedBooks.isNotEmpty()) {
         DeleteMultipleBooksDialog(
@@ -137,7 +121,7 @@ fun BookListScreen(
             BookListContent(
                 books = books,
                 paddingValues = paddingValues,
-                onBookMoreClick = { selectedBookForOptions = it },
+                onDeleteBooks = onDeleteBooks,
                 onBookLongClick = { book ->
                     if (!isSelectionMode) {
                         onEnterSelectionMode(book)
@@ -334,23 +318,41 @@ private fun DeleteStateEffect(
 private fun BookListContent(
     books: List<Book>,
     paddingValues: PaddingValues,
-    onBookMoreClick: (Book) -> Unit,
+    onDeleteBooks: (List<Book>) -> Unit,
     onBookClick: (Book) -> Unit,
     onBookLongClick: (Book) -> Unit,
     isSelectionMode: Boolean,
     selectedBooks: Set<Book>
 ) {
+    var selectedBookForOptions by remember { mutableStateOf<Book?>(null) }
+
+    if (selectedBookForOptions != null && !isSelectionMode) {
+        val optionsTitle = stringResource(R.string.book_options)
+        val deleteLabel = stringResource(R.string.delete_from_library)
+
+        OptionsDialog(
+            title = optionsTitle,
+            options = listOf(
+                OptionItem(
+                    label = deleteLabel,
+                    onClick = { selectedBookForOptions?.let { onDeleteBooks(listOf(it)) } }
+                )
+            ),
+            onDismiss = { selectedBookForOptions = null }
+        )
+    }
+
     if (books.isEmpty()) {
         EmptyBooksMessage(paddingValues)
     } else {
         BooksGrid(
-            books,
-            paddingValues,
-            onBookMoreClick,
-            onBookClick,
-            onBookLongClick,
-            isSelectionMode,
-            selectedBooks
+            books = books,
+            paddingValues = paddingValues,
+            onBookMoreClick = { selectedBookForOptions = it },
+            onBookClick = onBookClick,
+            onBookLongClick = onBookLongClick,
+            isSelectionMode = isSelectionMode,
+            selectedBooks = selectedBooks
         )
     }
 }
@@ -387,18 +389,30 @@ private fun BooksGrid(
             .fillMaxSize()
             .padding(paddingValues),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(8.dp)
     ) {
-        items(books, key = { it.id }) { book ->
+        items(
+            items = books,
+            key = { it.id },
+            contentType = { "book" }
+        ) { book ->
+            val onClick = remember(book.id) { { onBookClick(book) } }
+            val onMoreClick = remember(book.id) { { onBookMoreClick(book) } }
+            val onLongClick = remember(book.id) { { onBookLongClick(book) } }
+
+            val isSelected by remember(book.id, selectedBooks) {
+                derivedStateOf { selectedBooks.contains(book) }
+            }
+
             BookCard(
                 book = book,
-                onClick = { onBookClick(book) },
-                onMoreClick = { onBookMoreClick(book) },
-                onLongClick = { onBookLongClick(book) },
-                isSelected = selectedBooks.contains(book),
+                onClick = onClick,
+                onMoreClick = onMoreClick,
+                onLongClick = onLongClick,
+                isSelected = isSelected,
                 isSelectionMode = isSelectionMode,
-                modifier = Modifier
-                    .fillMaxWidth()
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }

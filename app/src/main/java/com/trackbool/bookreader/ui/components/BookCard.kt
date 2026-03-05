@@ -25,6 +25,7 @@ import android.net.Uri
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.trackbool.bookreader.R
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.model.BookFileType
@@ -151,8 +152,14 @@ private fun BookCoverImage(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val imageUri = remember(coverUrl) {
-        Uri.fromFile(File(context.filesDir, coverUrl)).toString()
+    val filesDir = context.filesDir
+    
+    val imageUri = remember(coverUrl, filesDir) {
+        if (coverUrl.isNotEmpty()) {
+            Uri.fromFile(File(filesDir, coverUrl)).toString()
+        } else {
+            null
+        }
     }
 
     Box(
@@ -161,9 +168,12 @@ private fun BookCoverImage(
             .background(MaterialTheme.colorScheme.surfaceVariant),
         contentAlignment = Alignment.Center
     ) {
-        if (coverUrl.isNotEmpty()) {
+        if (imageUri != null) {
             AsyncImage(
-                model = imageUri,
+                model = ImageRequest.Builder(context)
+                    .data(imageUri)
+                    .crossfade(true)
+                    .build(),
                 contentDescription = stringResource(R.string.book_cover, title),
                 placeholder = painterResource(R.drawable.book_placeholder),
                 error = painterResource(R.drawable.book_placeholder),
