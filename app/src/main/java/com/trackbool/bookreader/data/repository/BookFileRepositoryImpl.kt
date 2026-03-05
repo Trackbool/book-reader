@@ -1,13 +1,16 @@
 package com.trackbool.bookreader.data.repository
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.model.Cover
 import com.trackbool.bookreader.domain.repository.BookFileRepository
 import com.trackbool.bookreader.domain.repository.FileManager
 import com.trackbool.bookreader.domain.source.BookSource
-import java.io.File
+import java.io.ByteArrayOutputStream
 import java.util.UUID
+import androidx.core.graphics.scale
 
 class BookFileRepositoryImpl(
     private val fileManager: FileManager
@@ -79,11 +82,40 @@ class BookFileRepositoryImpl(
     override suspend fun saveCoverImage(cover: Cover): String {
         val coversDir = fileManager.ensureDirectoryExists(fileManager.getCoversDirectory())
 
-        val fileName = "${UUID.randomUUID()}.${cover.extension}"
+        val fileName = "${UUID.randomUUID()}.jpg"
         val coverFile = fileManager.createFile(coversDir, fileName)
-        coverFile.writeBytes(cover.bytes)
+
+        val scaled = scaleCoverImage(cover.bytes)
+        coverFile.writeBytes(scaled)
 
         return "${fileManager.getCoversDirectory().name}/$fileName"
+    }
+
+    private fun scaleCoverImage(bytes: ByteArray, maxWidth: Int = 240, maxHeight: Int = 360): ByteArray {
+        val original = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            ?: return bytes
+
+        val scale = minOf(
+            maxWidth.toFloat() / original.width,
+            maxHeight.toFloat() / original.height
+        ).coerceAtMost(1f)
+
+        if (scale == 1f) {
+            original.recycle()
+            return bytes
+        }
+
+        val scaled = original.scale(
+            width = (original.width * scale).toInt(),
+            height = (original.height * scale).toInt()
+        )
+        original.recycle()
+
+        return ByteArrayOutputStream().use { out ->
+            scaled.compress(Bitmap.CompressFormat.JPEG, 85, out)
+            scaled.recycle()
+            out.toByteArray()
+        }
     }
 
     private fun getFileExtension(fileName: String): String {
