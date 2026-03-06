@@ -87,7 +87,10 @@
         shadowRoot.host.style.setProperty('--vh', `${h}px`);
       }
       updateSizes();
-      window.addEventListener('resize', updateSizes);
+      window.addEventListener('resize', () => {
+        updateSizes();
+        calculateTotalPages();
+      });
     }
 
     function decodeB64(b64) {
@@ -126,6 +129,14 @@
       if (!pager) return;
       currentPage = Math.max(0, page);
       pager.scrollLeft = currentPage * window.innerWidth;
+    }
+
+    function calculateTotalPages() {
+      const pager = shadowRoot.getElementById('pager');
+      if (!pager) return 0;
+
+      total = Math.ceil(pager.scrollWidth / window.innerWidth);
+      NativeApp.onPagesCalculated(total);
     }
 
     document.addEventListener('DOMContentLoaded', () => {

@@ -30,11 +30,9 @@ internal fun EpubPagedReader(
         chapters = chapters,
         assetFileName = "epub_paged_template.html",
         modifier = modifier,
-        extraJavascriptInterfaces = listOf(bridge to "EpubBridge"),
+        extraJavascriptInterfaces = listOf(bridge to "NativeApp"),
         onChaptersInjected = { wv ->
-            wv.postDelayed({
-                wv.evaluateJavascript("calculateTotalPages();", null)
-            }, 150)
+            wv.evaluateJavascript("calculateTotalPages();", null)
         },
         overlayContent = { contentInjected ->
             if (!contentInjected) {
