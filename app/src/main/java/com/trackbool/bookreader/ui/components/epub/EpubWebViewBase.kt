@@ -1,9 +1,11 @@
 package com.trackbool.bookreader.ui.components.epub
 
+import android.annotation.SuppressLint
 import android.graphics.Color
 import android.util.Base64
 import android.webkit.WebView
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -12,30 +14,31 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.model.ChapterContent
-import com.trackbool.bookreader.ui.components.LoadingIndicator
+import com.trackbool.bookreader.ui.epub.EpubJavascriptInterface
 import com.trackbool.bookreader.ui.epub.EpubWebViewClient
 import com.trackbool.bookreader.ui.model.ChapterView
 
+@SuppressLint("JavascriptInterface")
 @Composable
-fun EpubReaderContent(
+internal fun EpubWebViewBase(
     book: Book,
     chapters: List<ChapterView>,
+    assetFileName: String,
     modifier: Modifier = Modifier,
+    extraJavascriptInterfaces: List<Pair<EpubJavascriptInterface, String>> = emptyList(),
+    onChaptersInjected: (WebView) -> Unit = {},
+    overlayContent: @Composable BoxScope.(contentInjected: Boolean) -> Unit = {},
 ) {
     val context = LocalContext.current
     val assetResolver = rememberEpubAssetResolver(book.filePath)
 
-    val readerHtml = remember {
-        context.assets
-            .open("epub_reader_template.html")
-            .bufferedReader()
-            .use { it.readText() }
+    val readerHtml = remember(assetFileName) {
+        context.assets.open(assetFileName).bufferedReader().use { it.readText() }
     }
 
     var webView by remember { mutableStateOf<WebView?>(null) }
@@ -51,6 +54,8 @@ fun EpubReaderContent(
             val htmlB64 = html.toByteArray(Charsets.UTF_8).toBase64()
             wv.evaluateJavascript("appendChapter('${chapter.id}', '$htmlB64');", null)
         }
+
+        onChaptersInjected(wv)
         contentInjected = true
     }
 
@@ -76,6 +81,10 @@ fun EpubReaderContent(
                         background = null
                     }
 
+                    extraJavascriptInterfaces.forEach { (obj, name) ->
+                        addJavascriptInterface(obj, name)
+                    }
+
                     webViewClient = EpubWebViewClient(
                         context = ctx,
                         assetResolver = assetResolver,
@@ -95,13 +104,7 @@ fun EpubReaderContent(
             modifier = Modifier.fillMaxSize(),
         )
 
-        if (!contentInjected) {
-            LoadingIndicator(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .align(Alignment.Center),
-            )
-        }
+        overlayContent(contentInjected)
     }
 }
 

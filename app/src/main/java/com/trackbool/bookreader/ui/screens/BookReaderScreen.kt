@@ -19,9 +19,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.trackbool.bookreader.R
 import com.trackbool.bookreader.domain.model.Book
-import com.trackbool.bookreader.ui.components.BookContent
+import com.trackbool.bookreader.ui.components.BookPagedContent
+import com.trackbool.bookreader.ui.components.BookScrollContent
 import com.trackbool.bookreader.ui.components.LoadingIndicator
 import com.trackbool.bookreader.ui.model.ChapterView
+import com.trackbool.bookreader.ui.model.ReaderMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,6 +32,8 @@ fun BookReaderScreen(
     chapters: List<ChapterView>,
     isLoading: Boolean,
     onBack: () -> Unit,
+    onCurrentPageChanged: (Int) -> Unit,
+    onTotalPagesCalculated: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -64,13 +68,26 @@ fun BookReaderScreen(
                 LoadingIndicator(modifier = Modifier.padding(paddingValues))
             }
             chapters.isNotEmpty() -> {
-                BookContent(
-                    book = book,
-                    chapters = chapters,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                )
+                val readerMode = ReaderMode.PAGED //TODO: select dynamically
+
+                when (readerMode) {
+                    ReaderMode.SCROLL -> BookScrollContent(
+                        book = book,
+                        chapters = chapters,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues),
+                    )
+                    ReaderMode.PAGED -> BookPagedContent(
+                        book = book,
+                        chapters = chapters,
+                        onCurrentPageChanged = onCurrentPageChanged,
+                        onTotalPagesCalculated = onTotalPagesCalculated,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues),
+                    )
+                }
             }
             else -> {
                 Box(

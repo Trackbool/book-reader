@@ -72,6 +72,8 @@ fun AppNavGraph(
                     chapters = chapters,
                     isLoading = isLoading,
                     onBack = { navController.popBackStack() },
+                    onCurrentPageChanged = viewModel::onPageChanged,
+                    onTotalPagesCalculated = viewModel::onTotalPagesCalculated,
                 )
             }
         }

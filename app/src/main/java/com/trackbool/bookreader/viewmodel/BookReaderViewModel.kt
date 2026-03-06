@@ -35,6 +35,20 @@ class BookReaderViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val _currentPage = MutableStateFlow(0)
+    val currentPage: StateFlow<Int> = _currentPage.asStateFlow()
+
+    private val _totalPages = MutableStateFlow(0)
+    val totalPages: StateFlow<Int> = _totalPages.asStateFlow()
+
+    fun onPageChanged(page: Int) {
+        _currentPage.value = page
+    }
+
+    fun onTotalPagesCalculated(total: Int) {
+        _totalPages.value = total
+    }
+
     init {
         loadBook()
     }

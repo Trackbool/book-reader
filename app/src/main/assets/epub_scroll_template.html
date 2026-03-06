@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <title>Epub Reader</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: transparent;
+      padding: 24px 20px 48px;
+      word-wrap: break-word;
+      overflow-x: hidden;
+      overflow-wrap: break-word;
+      -webkit-text-size-adjust: 100%;
+    }
+    #content { display: block; }
+  </style>
+  <script>
+    let shadowRoot;
+
+    function initShadow() {
+      const host = document.getElementById('content');
+      shadowRoot = host.attachShadow({ mode: 'open' });
+
+      const style = document.createElement('style');
+      style.textContent = `
+        :host { display: block; }
+
+        * { box-sizing: border-box; }
+
+        /* Reset */
+        section * {
+          margin: 0;
+          padding: 0;
+          font-size: revert;
+          max-width: 100%;
+        }
+
+        section {
+          font-family: Georgia, 'Times New Roman', serif;
+          font-size: 20px;
+          line-height: 1.75;
+          color: #1c1c1e;
+          margin-bottom: 56px;
+        }
+
+        section p             { margin-bottom: 1em; text-indent: 1.5em; }
+        section p:first-child { text-indent: 0; }
+        section h1            { margin: 1.4em 0 0.5em; font-size: 1.6em; }
+        section h2            { margin: 1.2em 0 0.4em; font-size: 1.35em; }
+        section h3            { margin: 1em 0 0.3em; font-size: 1.15em; }
+        section h4, section h5, section h6 { margin: 0.8em 0 0.2em; }
+        section blockquote    { margin: 1em 1.5em; padding-left: 1em; border-left: 3px solid #ccc; }
+        section ul, section ol { margin: 0.8em 0; padding-left: 2em; }
+        section li            { margin-bottom: 0.3em; }
+        section img           { height: auto; display: block; margin: 16px auto; }
+        section a             { color: #555; }
+        section hr            { margin: 2em 0; border: none; border-top: 1px solid #ddd; }
+        section pre, section code { font-family: monospace; font-size: 0.9em; }
+        section pre           { margin: 1em 0; padding: 1em; overflow-x: auto; }
+      `;
+      shadowRoot.appendChild(style);
+    }
+
+    function decodeB64(b64) {
+      const bytes = atob(b64);
+      const arr   = new Uint8Array(bytes.length);
+      for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+      return new TextDecoder('utf-8').decode(arr);
+    }
+
+    function appendChapter(id, htmlB64) {
+      const section = document.createElement('section');
+      section.id = id;
+      section.innerHTML = decodeB64(htmlB64);
+      shadowRoot.appendChild(section);
+    }
+
+    function navigateToId(id, offset = 40) {
+      const el = shadowRoot.getElementById(id);
+      if (!el) return;
+
+      const top = el.getBoundingClientRect().top + window.scrollY - offset;
+
+      window.scrollTo({
+        top,
+        behavior: 'instant'
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initShadow();
+
+      shadowRoot.addEventListener('click', (e) => {
+        const a = e.target.closest('a[href]');
+        if (!a) return;
+
+        e.preventDefault();
+
+        const href = a.getAttribute('href');
+
+        if (href.startsWith('#')) {
+          navigateToId(href.slice(1));
+        } else {
+          window.location.href = href;
+        }
+      });
+    });
+  </script>
+</head>
+
+<body>
+<div id="content"></div>
+</body>
+</html>
