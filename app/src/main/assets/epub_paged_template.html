@@ -7,7 +7,7 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background: transparent;
+      background: white;
       word-wrap: break-word;
       overflow: hidden;
       overflow-wrap: break-word;
@@ -15,7 +15,7 @@
       width: 100%;
       height: 100%;
     }
-    #content { display: block; width: 100%; height: 100% }
+    #content { display: block; width: 100%; height: 100%; }
   </style>
   <script>
     let shadowRoot;
@@ -26,22 +26,26 @@
 
       const style = document.createElement('style');
       style.textContent = `
-        :host { display: block; }
+        :host {
+          display: block;
+          width: var(--vw, 100vw);
+          height: var(--vh, 100vh);
+          overflow: hidden;
+        }
 
         #pager {
           column-width: var(--vw, 100vw);
           column-gap: 0;
           column-fill: auto;
           height: var(--vh, 100vh);
-          overflow-x: scroll;
-          overflow-y: hidden;
+          overflow: visible;
           padding-top: 16px;
           padding-bottom: 16px;
+          will-change: transform;
         }
 
         * { box-sizing: border-box; }
 
-        /* Reset */
         section * {
           margin: 0;
           padding: 0;
@@ -75,6 +79,7 @@
       `;
 
       shadowRoot.appendChild(style);
+
       const pager = document.createElement('div');
       pager.id = 'pager';
       shadowRoot.appendChild(pager);
@@ -108,18 +113,7 @@
       section.innerHTML = decodeB64(htmlB64);
 
       pager.appendChild(section);
-    }
-
-    function navigateToId(id, offset = 40) {
-      const el = shadowRoot.getElementById(id);
-      if (!el) return;
-
-      const top = el.getBoundingClientRect().top + window.scrollY - offset;
-
-      window.scrollTo({
-        top,
-        behavior: 'instant'
-      });
+      requestAnimationFrame(calculateTotalPages);
     }
 
     let currentPage = 0;
@@ -128,15 +122,45 @@
       const pager = shadowRoot.getElementById('pager');
       if (!pager) return;
       currentPage = Math.max(0, page);
-      pager.scrollLeft = currentPage * window.innerWidth;
+      const colWidth = getRealColumnWidth();
+      pager.style.transform = `translateX(${-currentPage * colWidth}px)`;
+    }
+
+    function navigateToId(id) {
+      const pager = shadowRoot.getElementById('pager');
+      const el = shadowRoot.getElementById(id);
+      if (!pager || !el) return;
+
+      const colWidth = getRealColumnWidth();
+      const pagerRect = pager.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+
+      const currentOffset = -currentPage * colWidth;
+      const elLeft = elRect.left - pagerRect.left - currentOffset;
+      const page = Math.floor((elLeft + colWidth / 2) / colWidth);
+      goToPage(page);
     }
 
     function calculateTotalPages() {
       const pager = shadowRoot.getElementById('pager');
       if (!pager) return 0;
 
-      total = Math.ceil(pager.scrollWidth / window.innerWidth);
+      const colWidth = getRealColumnWidth();
+      const total = Math.ceil(pager.scrollWidth / colWidth);
       NativeApp.onPagesCalculated(total);
+    }
+
+    // Read the real column width directly from the DOM layout instead of calculating it,
+    // since CSS columns internally uses physical pixels / DPR which may be fractional.
+    function getRealColumnWidth() {
+      const pager = shadowRoot.getElementById('pager');
+      const sections = pager.querySelectorAll('section');
+      if (sections.length < 2) {
+        return parseFloat(shadowRoot.host.style.getPropertyValue('--vw'));
+      }
+      const firstRect = sections[0].getBoundingClientRect();
+      const secondRect = sections[1].getBoundingClientRect();
+      return secondRect.left - firstRect.left;
     }
 
     document.addEventListener('DOMContentLoaded', () => {
