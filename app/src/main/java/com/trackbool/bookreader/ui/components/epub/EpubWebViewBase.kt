@@ -49,11 +49,16 @@ internal fun EpubWebViewBase(
         if (!pageReady) return@LaunchedEffect
         val wv = webView ?: return@LaunchedEffect
 
-        chapters.forEach { chapter ->
+        val chaptersJson = chapters.joinToString(
+            prefix = "[",
+            postfix = "]",
+            separator = ","
+        ) { chapter ->
             val html = (chapter.content as? ChapterContent.Html)?.html.orEmpty()
             val htmlB64 = html.toByteArray(Charsets.UTF_8).toBase64()
-            wv.evaluateJavascript("appendChapter('${chapter.id}', '$htmlB64');", null)
+            """{"id":"${chapter.id}","html":"$htmlB64"}"""
         }
+        wv.evaluateJavascript("appendChapters('$chaptersJson');", null)
 
         onChaptersInjected(wv)
         contentInjected = true

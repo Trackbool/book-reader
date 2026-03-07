@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import com.trackbool.bookreader.R
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.ui.components.BookPagedContent
@@ -31,11 +32,15 @@ fun BookReaderScreen(
     book: Book,
     chapters: List<ChapterView>,
     isLoading: Boolean,
+    currentPage: Int,
+    totalPages: Int,
     onBack: () -> Unit,
     onCurrentPageChanged: (Int) -> Unit,
     onTotalPagesCalculated: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val readerMode = ReaderMode.SCROLL //TODO: select dynamically
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -54,6 +59,16 @@ fun BookReaderScreen(
                         )
                     }
                 },
+                actions = {
+                    if (!isLoading) {
+                        BookProgress(
+                            book = book,
+                            currentPage = currentPage,
+                            totalPages = totalPages,
+                            readerMode = readerMode
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -68,8 +83,6 @@ fun BookReaderScreen(
                 LoadingIndicator(modifier = Modifier.padding(paddingValues))
             }
             chapters.isNotEmpty() -> {
-                val readerMode = ReaderMode.PAGED //TODO: select dynamically
-
                 when (readerMode) {
                     ReaderMode.SCROLL -> BookScrollContent(
                         book = book,
@@ -101,4 +114,16 @@ fun BookReaderScreen(
             }
         }
     }
+}
+
+@Composable
+fun BookProgress(book: Book, currentPage: Int, totalPages: Int, readerMode: ReaderMode) {
+    val progressText = if (readerMode == ReaderMode.PAGED)
+        "$currentPage/$totalPages - ${book.progressPercent}%" else "${book.progressPercent}%"
+
+    Text(
+        text = progressText,
+        style = MaterialTheme.typography.bodyMedium,
+        modifier = Modifier.padding(end = 16.dp),
+    )
 }

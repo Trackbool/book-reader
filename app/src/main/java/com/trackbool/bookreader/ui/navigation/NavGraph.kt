@@ -65,12 +65,16 @@ fun AppNavGraph(
             val book by viewModel.book.collectAsState()
             val chapters by viewModel.chapters.collectAsState()
             val isLoading by viewModel.isLoading.collectAsState()
+            val currentPage by viewModel.currentPage.collectAsState()
+            val totalPages by viewModel.totalPages.collectAsState()
 
             book?.let {
                 BookReaderScreen(
                     book = it,
                     chapters = chapters,
                     isLoading = isLoading,
+                    currentPage = currentPage,
+                    totalPages = totalPages,
                     onBack = { navController.popBackStack() },
                     onCurrentPageChanged = viewModel::onPageChanged,
                     onTotalPagesCalculated = viewModel::onTotalPagesCalculated,

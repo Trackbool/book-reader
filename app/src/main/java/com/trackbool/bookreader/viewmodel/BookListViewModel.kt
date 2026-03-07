@@ -29,7 +29,6 @@ class BookListViewModel @Inject constructor(
     private val getAllBooksUseCase: GetAllBooksUseCase,
     private val importBooksUseCase: ImportBooksUseCase,
     private val addBooksUseCase: AddBooksUseCase,
-    private val updateBookProgressUseCase: UpdateBookProgressUseCase,
     private val deleteBooksUseCase: DeleteBooksUseCase,
 ) : ViewModel() {
 
@@ -109,12 +108,6 @@ class BookListViewModel @Inject constructor(
             } else {
                 _importState.value = ImportState.Error(R.string.error_import_book)
             }
-        }
-    }
-
-    fun updateProgress(book: Book, currentPage: Int) {
-        viewModelScope.launch {
-            updateBookProgressUseCase(book, currentPage)
         }
     }
 

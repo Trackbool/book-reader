@@ -166,6 +166,21 @@
       return new TextDecoder('utf-8').decode(arr);
     }
 
+    function appendChapters(chaptersJson) {
+      const chapters = JSON.parse(chaptersJson);
+      const pager = shadowRoot.getElementById('pager');
+
+      chapters.forEach(ch => {
+        const section = document.createElement('section');
+        section.id = ch.id;
+        section.innerHTML = decodeB64(ch.html);
+        pager.appendChild(section);
+      });
+
+      cachedColumnWidth = null;
+      requestAnimationFrame(calculateTotalPages);
+    }
+
     function appendChapter(id, htmlB64) {
       const pager = shadowRoot.getElementById('pager');
 
@@ -186,6 +201,7 @@
       currentPage = Math.max(0, page);
       const colWidth = getRealColumnWidth();
       pager.style.transform = `translateX(${-currentPage * colWidth}px)`;
+      NativeApp.onPageChanged(currentPage + 1, Math.ceil(pager.scrollWidth / colWidth));
     }
 
     function navigateToId(id) {

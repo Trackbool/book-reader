@@ -8,6 +8,7 @@ import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.model.ChapterContent
 import com.trackbool.bookreader.domain.usecase.GetBookContentUseCase
 import com.trackbool.bookreader.domain.usecase.GetBookUseCase
+import com.trackbool.bookreader.domain.usecase.UpdateBookProgressUseCase
 import com.trackbool.bookreader.ui.model.ChapterView
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,6 +23,7 @@ class BookReaderViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val getBookUseCase: GetBookUseCase,
     private val getBookContentUseCase: GetBookContentUseCase,
+    private val updateBookProgressUseCase: UpdateBookProgressUseCase,
 ) : ViewModel() {
 
     private val bookId: Long = savedStateHandle.get<Long>("bookId") ?: -1
@@ -35,18 +37,36 @@ class BookReaderViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    private val _currentPage = MutableStateFlow(0)
+    private val _currentPage = MutableStateFlow(1)
     val currentPage: StateFlow<Int> = _currentPage.asStateFlow()
 
-    private val _totalPages = MutableStateFlow(0)
+    private val _totalPages = MutableStateFlow(1)
     val totalPages: StateFlow<Int> = _totalPages.asStateFlow()
 
     fun onPageChanged(page: Int) {
         _currentPage.value = page
+        saveProgress()
     }
 
     fun onTotalPagesCalculated(total: Int) {
         _totalPages.value = total
+    }
+
+    fun getInitialPage(): Int {
+        val progress = _book.value?.readingProgress ?: 0f
+        val total = _totalPages.value
+        return if (total > 0) (progress * total).toInt() else 0
+    }
+
+    private fun saveProgress() {
+        val book = _book.value ?: return
+        val current = _currentPage.value
+        val total = _totalPages.value
+        if (total <= 0) return
+
+        viewModelScope.launch {
+            updateBookProgressUseCase(book, current, total)
+        }
     }
 
     init {

@@ -254,8 +254,7 @@ private fun BookCardPreview() {
                 coverPath = "",
                 fileType = BookFileType.PDF,
                 filePath = "",
-                currentPage = 0,
-                totalPages = 0
+                readingProgress = 0f
             ),
             onClick = {},
             onMoreClick = {},
@@ -278,8 +277,7 @@ private fun BookCardSmallPreview() {
                 coverPath = "",
                 fileType = BookFileType.EPUB,
                 filePath = "",
-                currentPage = 0,
-                totalPages = 0
+                readingProgress = 0f
             ),
             onClick = {},
             onMoreClick = {},
