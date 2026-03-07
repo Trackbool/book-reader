@@ -99,6 +99,64 @@
         updateSizes();
         calculateTotalPages();
       });
+
+      initSwipeGesture()
+    }
+
+    function initSwipeGesture() {
+      const host = shadowRoot.host;
+      let startX = 0;
+      let startTime = 0;
+      let dragging = false;
+
+      const THRESHOLD = 0.2;
+      const VELOCITY_THRESHOLD = 0.3;
+
+      host.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        startTime = Date.now();
+        dragging = true;
+      }, { passive: true });
+
+      host.addEventListener('touchmove', (e) => {
+        if (!dragging) return;
+        const pager = shadowRoot.getElementById('pager');
+        const colWidth = getRealColumnWidth();
+        const totalPages = Math.ceil(pager.scrollWidth / colWidth);
+        const deltaX = e.touches[0].clientX - startX;
+
+        if ((deltaX > 0 && currentPage === 0) ||
+            (deltaX < 0 && currentPage === totalPages - 1)) return;
+
+        pager.style.transition = 'none';
+        pager.style.transform = `translateX(${-currentPage * colWidth + deltaX}px)`;
+      }, { passive: true });
+
+      host.addEventListener('touchend', (e) => {
+        if (!dragging) return;
+        dragging = false;
+
+        const pager = shadowRoot.getElementById('pager');
+        const colWidth = getRealColumnWidth();
+        const totalPages = Math.ceil(pager.scrollWidth / colWidth);
+        const deltaX = e.changedTouches[0].clientX - startX;
+        const velocity = Math.abs(deltaX) / (Date.now() - startTime);
+
+        const isSwipeLeft  = deltaX < 0 && (Math.abs(deltaX) > colWidth * THRESHOLD || velocity > VELOCITY_THRESHOLD);
+        const isSwipeRight = deltaX > 0 && (Math.abs(deltaX) > colWidth * THRESHOLD || velocity > VELOCITY_THRESHOLD);
+
+        pager.style.transition = 'transform 0.3s ease';
+
+        if (isSwipeLeft && currentPage < totalPages - 1) {
+          goToPage(currentPage + 1);
+        } else if (isSwipeRight && currentPage > 0) {
+          goToPage(currentPage - 1);
+        } else {
+          goToPage(currentPage);
+        }
+
+        setTimeout(() => { pager.style.transition = 'none'; }, 300);
+      }, { passive: true });
     }
 
     function decodeB64(b64) {
