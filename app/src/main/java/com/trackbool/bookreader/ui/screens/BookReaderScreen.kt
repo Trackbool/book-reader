@@ -39,7 +39,7 @@ fun BookReaderScreen(
     onTotalPagesCalculated: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val readerMode = ReaderMode.SCROLL //TODO: select dynamically
+    val readerMode = ReaderMode.PAGED //TODO: select dynamically
 
     Scaffold(
         topBar = {
