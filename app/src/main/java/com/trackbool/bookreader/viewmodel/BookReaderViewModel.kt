@@ -52,6 +52,10 @@ class BookReaderViewModel @Inject constructor(
         _totalPages.value = total
     }
 
+    fun onContentReady() {
+        _isLoading.value = false
+    }
+
     fun getInitialPage(): Int {
         val progress = _book.value?.readingProgress ?: 0f
         val total = _totalPages.value
@@ -85,8 +89,6 @@ class BookReaderViewModel @Inject constructor(
 
     private fun loadContent(book: Book) {
         viewModelScope.launch {
-            _isLoading.value = true
-
             val content = getBookContentUseCase(book)
             _chapters.value = content?.chapters
                 ?.mapIndexed { index, chapter ->
@@ -97,8 +99,6 @@ class BookReaderViewModel @Inject constructor(
                     )
                 }
                 .orEmpty()
-
-            _isLoading.value = false
         }
     }
 

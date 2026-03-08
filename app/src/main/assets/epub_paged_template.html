@@ -20,6 +20,8 @@
   <script>
     let shadowRoot;
     let cachedColumnWidth = null;
+    let currentPage = 0;
+    let totalpages = 0;
 
     function initShadow() {
       const host = document.getElementById('content');
@@ -166,42 +168,39 @@
       return new TextDecoder('utf-8').decode(arr);
     }
 
-    function appendChapters(chaptersJson) {
+    async function appendChapters(chaptersJson) {
       const chapters = JSON.parse(chaptersJson);
       const pager = shadowRoot.getElementById('pager');
 
       chapters.forEach(ch => {
-        const section = document.createElement('section');
-        section.id = ch.id;
-        section.innerHTML = decodeB64(ch.html);
-        pager.appendChild(section);
+          const section = document.createElement('section');
+          section.id = ch.id;
+          section.innerHTML = decodeB64(ch.html);
+          pager.appendChild(section);
       });
 
       cachedColumnWidth = null;
-      requestAnimationFrame(calculateTotalPages);
+      await waitForImages(pager);
+      requestAnimationFrame(() => {
+          calculateTotalPages();
+          NativeApp.onContentReady();
+      });
     }
-
-    function appendChapter(id, htmlB64) {
-      const pager = shadowRoot.getElementById('pager');
-
-      const section = document.createElement('section');
-      section.id = id;
-      section.innerHTML = decodeB64(htmlB64);
-
-      pager.appendChild(section);
-      cachedColumnWidth = null;
-      requestAnimationFrame(calculateTotalPages);
-    }
-
-    let currentPage = 0;
 
     function goToPage(page) {
       const pager = shadowRoot.getElementById('pager');
       if (!pager) return;
-      currentPage = Math.max(0, page);
+
+      const newPage = Math.max(0, page);
       const colWidth = getRealColumnWidth();
-      pager.style.transform = `translateX(${-currentPage * colWidth}px)`;
-      NativeApp.onPageChanged(currentPage + 1, Math.ceil(pager.scrollWidth / colWidth));
+      pager.style.transform = `translateX(${-newPage * colWidth}px)`;
+
+      if (newPage !== currentPage) {
+          currentPage = newPage;
+          NativeApp.onPageChanged(currentPage + 1, totalPages);
+      } else {
+          currentPage = newPage;
+      }
     }
 
     function navigateToId(id) {
@@ -222,10 +221,20 @@
     function calculateTotalPages() {
       const pager = shadowRoot.getElementById('pager');
       if (!pager) return 0;
-
       const colWidth = getRealColumnWidth();
-      const total = Math.ceil(pager.scrollWidth / colWidth);
-      NativeApp.onPagesCalculated(total);
+      totalPages = Math.ceil(pager.scrollWidth / colWidth);
+      NativeApp.onPagesCalculated(totalPages);
+    }
+
+    function waitForImages(pager) {
+      const imgs = [...pager.querySelectorAll('img')];
+      const pending = imgs
+          .filter(img => !img.complete)
+          .map(img => new Promise(resolve => {
+              img.addEventListener('load', resolve);
+              img.addEventListener('error', resolve);
+          }));
+      return Promise.all(pending);
     }
 
     // The column-width and container-width are both set to --vw with column-gap 0,

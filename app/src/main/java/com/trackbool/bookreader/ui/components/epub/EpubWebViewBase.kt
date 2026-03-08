@@ -3,9 +3,9 @@ package com.trackbool.bookreader.ui.components.epub
 import android.annotation.SuppressLint
 import android.graphics.Color
 import android.util.Base64
+import android.util.Log
 import android.webkit.WebView
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -30,9 +30,7 @@ internal fun EpubWebViewBase(
     chapters: List<ChapterView>,
     assetFileName: String,
     modifier: Modifier = Modifier,
-    extraJavascriptInterfaces: List<Pair<EpubJavascriptInterface, String>> = emptyList(),
-    onChaptersInjected: (WebView) -> Unit = {},
-    overlayContent: @Composable BoxScope.(contentInjected: Boolean) -> Unit = {},
+    extraJavascriptInterfaces: List<Pair<EpubJavascriptInterface, String>> = emptyList()
 ) {
     val context = LocalContext.current
     val assetResolver = rememberEpubAssetResolver(book.filePath)
@@ -43,11 +41,15 @@ internal fun EpubWebViewBase(
 
     var webView by remember { mutableStateOf<WebView?>(null) }
     var pageReady by remember { mutableStateOf(false) }
-    var contentInjected by remember { mutableStateOf(false) }
 
     LaunchedEffect(pageReady) {
         if (!pageReady) return@LaunchedEffect
         val wv = webView ?: return@LaunchedEffect
+
+        if (chapters.isEmpty()) {
+            Log.w("EpubWebViewBase", "No chapters to inject!")
+            return@LaunchedEffect
+        }
 
         val chaptersJson = chapters.joinToString(
             prefix = "[",
@@ -59,9 +61,6 @@ internal fun EpubWebViewBase(
             """{"id":"${chapter.id}","html":"$htmlB64"}"""
         }
         wv.evaluateJavascript("appendChapters('$chaptersJson');", null)
-
-        onChaptersInjected(wv)
-        contentInjected = true
     }
 
     DisposableEffect(Unit) {
@@ -108,8 +107,6 @@ internal fun EpubWebViewBase(
             update = { webView = it },
             modifier = Modifier.fillMaxSize(),
         )
-
-        overlayContent(contentInjected)
     }
 }
 

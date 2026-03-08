@@ -70,21 +70,19 @@
       return new TextDecoder('utf-8').decode(arr);
     }
 
-    function appendChapters(chaptersJson) {
+    async function appendChapters(chaptersJson) {
       const chapters = JSON.parse(chaptersJson);
       chapters.forEach(ch => {
-        const section = document.createElement('section');
-        section.id = ch.id;
-        section.innerHTML = decodeB64(ch.html);
-        shadowRoot.appendChild(section);
+          const section = document.createElement('section');
+          section.id = ch.id;
+          section.innerHTML = decodeB64(ch.html);
+          shadowRoot.appendChild(section);
       });
-    }
 
-    function appendChapter(id, htmlB64) {
-      const section = document.createElement('section');
-      section.id = id;
-      section.innerHTML = decodeB64(htmlB64);
-      shadowRoot.appendChild(section);
+      await waitForImages(shadowRoot);
+      requestAnimationFrame(() => {
+          NativeApp.onContentReady();
+      });
     }
 
     function navigateToId(id, offset = 40) {
@@ -97,6 +95,17 @@
         top,
         behavior: 'instant'
       });
+    }
+
+    function waitForImages(root) {
+      const imgs = [...root.querySelectorAll('img')];
+      const pending = imgs
+          .filter(img => !img.complete)
+          .map(img => new Promise(resolve => {
+              img.addEventListener('load', resolve);
+              img.addEventListener('error', resolve);
+          }));
+      return Promise.all(pending);
     }
 
     document.addEventListener('DOMContentLoaded', () => {

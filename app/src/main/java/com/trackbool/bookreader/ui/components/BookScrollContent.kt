@@ -11,10 +11,11 @@ import com.trackbool.bookreader.ui.model.ChapterView
 fun BookScrollContent(
     book: Book,
     chapters: List<ChapterView>,
+    onContentReady: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (book.fileType) {
-        BookFileType.EPUB -> EpubScrollReader(book, chapters, modifier)
+        BookFileType.EPUB -> EpubScrollReader(book, chapters, onContentReady, modifier)
         BookFileType.PDF -> UnsupportedFormatMessage(format = "PDF", modifier = modifier)
         BookFileType.NONE -> UnsupportedFormatMessage(format = "Unknown", modifier = modifier)
     }

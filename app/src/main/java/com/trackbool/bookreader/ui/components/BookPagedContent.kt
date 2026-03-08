@@ -13,6 +13,7 @@ fun BookPagedContent(
     chapters: List<ChapterView>,
     onCurrentPageChanged: (Int) -> Unit,
     onTotalPagesCalculated: (Int) -> Unit,
+    onContentReady: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (book.fileType) {
@@ -21,6 +22,7 @@ fun BookPagedContent(
             chapters = chapters,
             onCurrentPageChanged = onCurrentPageChanged,
             onTotalPagesCalculated = onTotalPagesCalculated,
+            onContentReady = onContentReady,
             modifier = modifier,
         )
         BookFileType.PDF -> UnsupportedFormatMessage(format = "PDF", modifier = modifier)
