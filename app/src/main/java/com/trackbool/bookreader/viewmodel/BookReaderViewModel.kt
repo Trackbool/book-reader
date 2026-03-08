@@ -12,9 +12,12 @@ import com.trackbool.bookreader.domain.usecase.UpdateBookProgressUseCase
 import com.trackbool.bookreader.ui.model.ChapterView
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -34,14 +37,68 @@ class BookReaderViewModel @Inject constructor(
     private val _chapters = MutableStateFlow<List<ChapterView>>(emptyList())
     val chapters: StateFlow<List<ChapterView>> = _chapters.asStateFlow()
 
-    private val _isLoading = MutableStateFlow(true)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    private val _hasError = MutableStateFlow(false)
+    val hasError: StateFlow<Boolean> = _hasError.asStateFlow()
 
     private val _currentPage = MutableStateFlow(1)
     val currentPage: StateFlow<Int> = _currentPage.asStateFlow()
 
-    private val _totalPages = MutableStateFlow(1)
+    private val _totalPages = MutableStateFlow(0)
     val totalPages: StateFlow<Int> = _totalPages.asStateFlow()
+
+    private val _isLoadingData = MutableStateFlow(true)
+
+    private val _isLoadingRender = MutableStateFlow(false)
+
+    val isLoading: StateFlow<Boolean> = combine(_isLoadingData, _isLoadingRender) { data, render ->
+        data || render
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    init {
+        loadBook()
+    }
+
+    private fun loadBook() {
+        viewModelScope.launch {
+            _isLoadingData.value = true
+            _hasError.value = false
+            try {
+                val book = getBookUseCase(bookId).first()
+                _book.value = book
+                loadContent(book)
+            } catch (_: Exception) {
+                _hasError.value = true
+                _isLoadingData.value = false
+            }
+        }
+    }
+
+    private suspend fun loadContent(book: Book) {
+        val chapters = getBookContentUseCase(book)
+            ?.chapters
+            ?.mapIndexed { index, chapter ->
+                ChapterView(
+                    title = chapter.metadata.title.orEmpty(),
+                    id = chapter.metadata.id,
+                    content = chapterContentFor(book, chapter.content, index),
+                )
+            }
+            .orEmpty()
+
+        _chapters.value = chapters
+
+        if (chapters.isEmpty()) {
+            _hasError.value = true
+            _isLoadingData.value = false
+        } else {
+            _isLoadingRender.value = true
+            _isLoadingData.value = false
+        }
+    }
+
+    fun onContentReady() {
+        _isLoadingRender.value = false
+    }
 
     fun onPageChanged(page: Int) {
         _currentPage.value = page
@@ -52,16 +109,6 @@ class BookReaderViewModel @Inject constructor(
         _totalPages.value = total
     }
 
-    fun onContentReady() {
-        _isLoading.value = false
-    }
-
-    fun getInitialPage(): Int {
-        val progress = _book.value?.readingProgress ?: 0f
-        val total = _totalPages.value
-        return if (total > 0) (progress * total).toInt() else 0
-    }
-
     private fun saveProgress() {
         val book = _book.value ?: return
         val current = _currentPage.value
@@ -70,35 +117,6 @@ class BookReaderViewModel @Inject constructor(
 
         viewModelScope.launch {
             updateBookProgressUseCase(book, current, total)
-        }
-    }
-
-    init {
-        loadBook()
-    }
-
-    private fun loadBook() {
-        viewModelScope.launch {
-            _isLoading.value = true
-            getBookUseCase(bookId).collectLatest { book ->
-                _book.value = book
-                loadContent(book)
-            }
-        }
-    }
-
-    private fun loadContent(book: Book) {
-        viewModelScope.launch {
-            val content = getBookContentUseCase(book)
-            _chapters.value = content?.chapters
-                ?.mapIndexed { index, chapter ->
-                    ChapterView(
-                        title = chapter.metadata.title.orEmpty(),
-                        id = chapter.metadata.id,
-                        content = chapterContentFor(book, chapter.content, index),
-                    )
-                }
-                .orEmpty()
         }
     }
 

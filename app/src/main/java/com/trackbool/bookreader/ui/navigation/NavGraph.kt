@@ -65,6 +65,7 @@ fun AppNavGraph(
             val book by viewModel.book.collectAsState()
             val chapters by viewModel.chapters.collectAsState()
             val isLoading by viewModel.isLoading.collectAsState()
+            val hasError by viewModel.hasError.collectAsState()
             val currentPage by viewModel.currentPage.collectAsState()
             val totalPages by viewModel.totalPages.collectAsState()
 
@@ -73,6 +74,7 @@ fun AppNavGraph(
                     book = it,
                     chapters = chapters,
                     isLoading = isLoading,
+                    hasError = hasError,
                     currentPage = currentPage,
                     totalPages = totalPages,
                     onBack = { navController.popBackStack() },

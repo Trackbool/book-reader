@@ -32,6 +32,7 @@ fun BookReaderScreen(
     book: Book,
     chapters: List<ChapterView>,
     isLoading: Boolean,
+    hasError: Boolean,
     currentPage: Int,
     totalPages: Int,
     onBack: () -> Unit,
@@ -66,7 +67,7 @@ fun BookReaderScreen(
                             book = book,
                             currentPage = currentPage,
                             totalPages = totalPages,
-                            readerMode = readerMode
+                            readerMode = readerMode,
                         )
                     }
                 },
@@ -79,41 +80,44 @@ fun BookReaderScreen(
         },
         modifier = modifier,
     ) { paddingValues ->
-        when {
-            isLoading && chapters.isEmpty() -> {
-                LoadingIndicator(modifier = Modifier.padding(paddingValues))
-            }
-            chapters.isNotEmpty() -> {
-                when (readerMode) {
-                    ReaderMode.SCROLL -> BookScrollContent(
-                        book = book,
-                        chapters = chapters,
-                        onContentReady = onContentReady,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues),
-                    )
-                    ReaderMode.PAGED -> BookPagedContent(
-                        book = book,
-                        chapters = chapters,
-                        onContentReady = onContentReady,
-                        onCurrentPageChanged = onCurrentPageChanged,
-                        onTotalPagesCalculated = onTotalPagesCalculated,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues),
-                    )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+        ) {
+            when {
+                hasError || (!isLoading && chapters.isEmpty()) -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(stringResource(R.string.reader_error_loading_content))
+                    }
+                }
+
+                chapters.isNotEmpty() -> {
+                    when (readerMode) {
+                        ReaderMode.SCROLL -> BookScrollContent(
+                            book = book,
+                            chapters = chapters,
+                            onContentReady = onContentReady,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+
+                        ReaderMode.PAGED -> BookPagedContent(
+                            book = book,
+                            chapters = chapters,
+                            onContentReady = onContentReady,
+                            onCurrentPageChanged = onCurrentPageChanged,
+                            onTotalPagesCalculated = onTotalPagesCalculated,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
                 }
             }
-            else -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(stringResource(R.string.reader_error_loading_content))
-                }
+
+            if (isLoading) {
+                LoadingIndicator(modifier = Modifier.fillMaxSize())
             }
         }
     }
