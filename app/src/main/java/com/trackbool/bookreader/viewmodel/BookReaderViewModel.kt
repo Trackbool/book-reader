@@ -102,21 +102,24 @@ class BookReaderViewModel @Inject constructor(
 
     fun onPageChanged(page: Int) {
         _currentPage.value = page
-        saveProgress()
+        updateProgress()
     }
 
     fun onTotalPagesCalculated(total: Int) {
         _totalPages.value = total
     }
 
-    private fun saveProgress() {
+    private fun updateProgress() {
         val book = _book.value ?: return
         val current = _currentPage.value
         val total = _totalPages.value
         if (total <= 0) return
 
         viewModelScope.launch {
-            updateBookProgressUseCase(book, current, total)
+            val result = updateBookProgressUseCase(book, current, total)
+            result.onSuccess {
+                _book.value = it
+            }
         }
     }
 
