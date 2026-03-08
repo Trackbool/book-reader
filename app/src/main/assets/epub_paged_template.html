@@ -228,39 +228,20 @@
       NativeApp.onPagesCalculated(total);
     }
 
-    // Read the real column width directly from the DOM layout instead of calculating it,
-    // since CSS columns internally uses physical pixels / DPR which may be fractional.
-    // The transform is temporarily reset to get accurate getBoundingClientRect() values.
+    // The column-width and container-width are both set to --vw with column-gap 0,
+    // so the CSS multicol algorithm always produces columns of exactly container-width.
+    // getBoundingClientRect().width gives sub-pixel precision (unlike window.innerWidth
+    // which is an integer) and is independent of content entirely.
     function getRealColumnWidth() {
       if (cachedColumnWidth) return cachedColumnWidth;
 
       const pager = shadowRoot.getElementById('pager');
-      const sections = pager.querySelectorAll('section');
+      const currentTransform = pager.style.transform;
+      pager.style.transform = 'none';
+      const width = pager.getBoundingClientRect().width;
+      pager.style.transform = currentTransform;
 
-      if (sections.length >= 2) {
-        const currentTransform = pager.style.transform;
-        pager.style.transform = 'none';
-        pager.getBoundingClientRect();
-
-        let width = 0;
-        for (let i = 1; i < sections.length; i++) {
-          const prevRect = sections[i - 1].getBoundingClientRect();
-          const currRect = sections[i].getBoundingClientRect();
-          if (currRect.left > prevRect.left) {
-            width = currRect.left - prevRect.left;
-            break;
-          }
-        }
-
-        pager.style.transform = currentTransform;
-
-        if (width > 0) {
-          cachedColumnWidth = width;
-          return cachedColumnWidth;
-        }
-      }
-
-      cachedColumnWidth = parseFloat(shadowRoot.host.style.getPropertyValue('--vw'));
+      cachedColumnWidth = width > 0 ? width : parseFloat(shadowRoot.host.style.getPropertyValue('--vw'));
       return cachedColumnWidth;
     }
 
