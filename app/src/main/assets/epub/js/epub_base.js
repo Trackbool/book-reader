@@ -16,6 +16,13 @@ function waitForImages(root) {
   return Promise.all(pending);
 }
 
+function waitForImagesAndFonts(root) {
+  return Promise.all([
+    waitForImages(root),
+    document.fonts?.ready || Promise.resolve()
+  ]);
+}
+
 function setupNavigationHandler(shadowRoot) {
   shadowRoot.addEventListener('click', (e) => {
     const a = e.target.closest('a[href]');
