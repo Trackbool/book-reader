@@ -20,12 +20,19 @@ internal class EpubAssetInterceptor(
 
         if (request.url.scheme != "epub") return null
 
-        val raw = request.url.toString().removePrefix("epub://")
-        val separatorIndex = raw.lastIndexOf('!')
-        if (separatorIndex == -1) return null
+        val entryPath = getEpubAssetPath(request.url.toString()) ?: return null
+        return loadEpubAsset(entryPath)
+    }
 
-        val entryPath = raw.substring(separatorIndex + 1)
+    private fun loadAppAsset(path: String): WebResourceResponse? {
+        val stream = appAssetResolver.resolve(path) ?: return null
+        val mimeType = MimeTypeMap.getSingleton()
+            .getMimeTypeFromExtension(path.substringAfterLast('.', ""))
+            ?: "application/octet-stream"
+        return WebResourceResponse(mimeType, "UTF-8", stream)
+    }
 
+    private fun loadEpubAsset(entryPath: String): WebResourceResponse? {
         val stream = epubAssetResolver.resolve(entryPath) ?: return null
 
         val extension = entryPath.substringAfterLast('.', missingDelimiterValue = "")
@@ -36,11 +43,11 @@ internal class EpubAssetInterceptor(
         return WebResourceResponse(mimeType, "UTF-8", stream)
     }
 
-    private fun loadAppAsset(path: String): WebResourceResponse? {
-        val stream = appAssetResolver.resolve(path) ?: return null
-        val mimeType = MimeTypeMap.getSingleton()
-            .getMimeTypeFromExtension(path.substringAfterLast('.', ""))
-            ?: "application/octet-stream"
-        return WebResourceResponse(mimeType, "UTF-8", stream)
+    private fun getEpubAssetPath(url: String): String? {
+        val raw = url.removePrefix("epub://")
+        val separatorIndex = raw.lastIndexOf('!')
+        if (separatorIndex == -1) return null
+
+        return raw.substring(separatorIndex + 1)
     }
 }
