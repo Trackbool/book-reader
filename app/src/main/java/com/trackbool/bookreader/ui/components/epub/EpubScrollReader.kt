@@ -25,7 +25,7 @@ internal fun EpubScrollReader(
     EpubWebViewBase(
         book = book,
         chapters = chapters,
-        assetFileName = "epub_scroll_template.html",
+        assetFileName = "epub/epub_scroll_template.html",
         modifier = modifier,
         extraJavascriptInterfaces = listOf(bridge to "NativeApp")
     )

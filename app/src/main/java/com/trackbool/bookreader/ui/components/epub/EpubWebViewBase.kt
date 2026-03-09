@@ -15,13 +15,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.model.ChapterContent
+import com.trackbool.bookreader.ui.components.rememberAppAssetResolver
+import com.trackbool.bookreader.ui.components.rememberEpubAssetResolver
+import com.trackbool.bookreader.ui.epub.ASSET_BASE_URL
 import com.trackbool.bookreader.ui.epub.EpubJavascriptInterface
 import com.trackbool.bookreader.ui.epub.EpubWebViewClient
 import com.trackbool.bookreader.ui.model.ChapterView
+import org.json.JSONArray
+import org.json.JSONObject
 
 @SuppressLint("JavascriptInterface")
 @Composable
@@ -32,17 +36,20 @@ internal fun EpubWebViewBase(
     modifier: Modifier = Modifier,
     extraJavascriptInterfaces: List<Pair<EpubJavascriptInterface, String>> = emptyList()
 ) {
-    val context = LocalContext.current
-    val assetResolver = rememberEpubAssetResolver(book.filePath)
+    val appAssetResolver = rememberAppAssetResolver()
+    val epubAssetResolver = rememberEpubAssetResolver(book.filePath)
 
     val readerHtml = remember(assetFileName) {
-        context.assets.open(assetFileName).bufferedReader().use { it.readText() }
+        appAssetResolver.resolve(assetFileName)?.bufferedReader().use { it?.readText() } ?: run {
+            Log.e("EpubWebViewBase", "Failed to load asset: $assetFileName")
+            ""
+        }
     }
 
     var webView by remember { mutableStateOf<WebView?>(null) }
     var pageReady by remember { mutableStateOf(false) }
 
-    LaunchedEffect(pageReady) {
+    LaunchedEffect(pageReady, chapters) {
         if (!pageReady) return@LaunchedEffect
         val wv = webView ?: return@LaunchedEffect
 
@@ -51,22 +58,15 @@ internal fun EpubWebViewBase(
             return@LaunchedEffect
         }
 
-        val chaptersJson = chapters.joinToString(
-            prefix = "[",
-            postfix = "]",
-            separator = ","
-        ) { chapter ->
-            val html = (chapter.content as? ChapterContent.Html)?.html.orEmpty()
-            val htmlB64 = html.toByteArray(Charsets.UTF_8).toBase64()
-            """{"id":"${chapter.id}","html":"$htmlB64"}"""
-        }
+        val chaptersJson = chapters.toChaptersJson()
         wv.evaluateJavascript("appendChapters('$chaptersJson');", null)
     }
 
     DisposableEffect(Unit) {
         onDispose {
             webView?.destroy()
-            assetResolver.release()
+            epubAssetResolver.release()
+            appAssetResolver.release()
         }
     }
 
@@ -82,7 +82,6 @@ internal fun EpubWebViewBase(
                         allowFileAccess = false
                         overScrollMode = WebView.OVER_SCROLL_NEVER
                         setBackgroundColor(Color.TRANSPARENT)
-                        background = null
                     }
 
                     extraJavascriptInterfaces.forEach { (obj, name) ->
@@ -91,12 +90,13 @@ internal fun EpubWebViewBase(
 
                     webViewClient = EpubWebViewClient(
                         context = ctx,
-                        assetResolver = assetResolver,
+                        epubAssetResolver = epubAssetResolver,
+                        appAssetResolver = appAssetResolver,
                         onPageReady = { pageReady = true },
                     )
 
                     loadDataWithBaseURL(
-                        "epub://content/",
+                        ASSET_BASE_URL,
                         readerHtml,
                         "text/html",
                         "UTF-8",
@@ -104,11 +104,20 @@ internal fun EpubWebViewBase(
                     )
                 }.also { webView = it }
             },
-            update = { webView = it },
             modifier = Modifier.fillMaxSize(),
         )
     }
 }
+
+private fun List<ChapterView>.toChaptersJson(): String =
+    JSONArray(map { chapter ->
+        val html = (chapter.content as? ChapterContent.Html)?.html.orEmpty()
+        val htmlB64 = html.toByteArray(Charsets.UTF_8).toBase64()
+        JSONObject().apply {
+            put("id", chapter.id)
+            put("html", htmlB64)
+        }
+    }).toString()
 
 private fun ByteArray.toBase64(): String =
     Base64.encodeToString(this, Base64.NO_WRAP)

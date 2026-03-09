@@ -9,11 +9,12 @@ import com.trackbool.bookreader.domain.repository.AssetResolver
 
 internal class EpubWebViewClient(
     context: Context,
-    assetResolver: AssetResolver,
+    epubAssetResolver: AssetResolver,
+    appAssetResolver: AssetResolver,
     private val onPageReady: () -> Unit,
 ) : WebViewClient() {
 
-    private val assetInterceptor = EpubAssetInterceptor(assetResolver)
+    private val assetInterceptor = EpubAssetInterceptor(epubAssetResolver, appAssetResolver)
     private val navigationHandler = EpubNavigationHandler(context)
 
     override fun onPageFinished(view: WebView, url: String) {

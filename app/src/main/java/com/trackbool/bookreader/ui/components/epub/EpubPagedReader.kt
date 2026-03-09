@@ -27,7 +27,7 @@ internal fun EpubPagedReader(
     EpubWebViewBase(
         book = book,
         chapters = chapters,
-        assetFileName = "epub_paged_template.html",
+        assetFileName = "epub/epub_paged_template.html",
         modifier = modifier,
         extraJavascriptInterfaces = listOf(bridge to "NativeApp")
     )
