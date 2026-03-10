@@ -16,6 +16,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.trackbool.bookreader.R
@@ -103,7 +104,7 @@ fun BookReaderScreen(
                             chapters = chapters,
                             onContentReady = onContentReady,
                             onProgressChanged =  onProgressChanged,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize().alpha(if (!isLoading) 1f else 0f),
                         )
 
                         ReaderMode.PAGED -> BookPagedContent(
@@ -113,7 +114,7 @@ fun BookReaderScreen(
                             onCurrentPageChanged = onCurrentPageChanged,
                             onTotalPagesCalculated = onTotalPagesCalculated,
                             onProgressChanged =  onProgressChanged,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize().alpha(if (!isLoading) 1f else 0f),
                         )
                     }
                 }
