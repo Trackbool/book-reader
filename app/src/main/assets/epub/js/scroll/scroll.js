@@ -121,7 +121,6 @@ function debounce(fn, delay) {
 function setupScrollTracking() {
     const emitDebounced = debounce(emitProgress, 300);
     window.addEventListener('scroll', emitDebounced, { passive: true });
-    //TODO: emitProgress on detach from Android
 }
 
 function restoreProgress(chapterId, nodeIndex) {
