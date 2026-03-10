@@ -59,7 +59,7 @@ internal fun EpubWebViewBase(
         }
 
         val chaptersJson = chapters.toChaptersJson()
-        wv.evaluateJavascript("appendChapters('$chaptersJson');", null)
+        wv.evaluateJavascript("loadContent('$chaptersJson');", null)
 
         if (book.documentPositionData.isNotEmpty()) {
             try {
@@ -71,6 +71,8 @@ internal fun EpubWebViewBase(
                 Log.e("EpubWebViewBase", "Failed to restore progress", e)
             }
         }
+
+        wv.evaluateJavascript("notifyReady();", null)
     }
 
     DisposableEffect(Unit) {

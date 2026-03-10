@@ -16,6 +16,10 @@ function debounce(fn, delay) {
   };
 }
 
+function notifyReady() {
+  bridge.onContentReady();
+};
+
 function decodeB64(b64) {
   const bytes = atob(b64);
   const arr = new Uint8Array(bytes.length);

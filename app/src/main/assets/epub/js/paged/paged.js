@@ -88,7 +88,7 @@ function initSwipeGesture(){
   },{passive:true});
 }
 
-async function appendChapters(chaptersJson){
+async function loadContent(chaptersJson){
   const chapters=JSON.parse(chaptersJson);
   const pager=shadowRoot.getElementById('pager');
 
@@ -104,9 +104,7 @@ async function appendChapters(chaptersJson){
 
   requestAnimationFrame(()=>{
     calculateTotalPages();
-    bridge.onContentReady();
   });
-
 }
 
 function goToPage(page){
