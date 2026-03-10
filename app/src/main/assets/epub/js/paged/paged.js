@@ -142,7 +142,6 @@ function navigateToId(id){
 	const page=Math.floor((offset+colWidth/2)/colWidth);
 
 	goToPage(page);
-
 }
 
 function getTotalPages(){
@@ -152,7 +151,7 @@ function getTotalPages(){
 	const savedTransform=pager.style.transform;
 	pager.style.transform='none';
 
-	const colWidth=pager.getBoundingClientRect().width;
+	const colWidth=getRealColumnWidth();
 	const scrollWidth=pager.scrollWidth;
 	pager.style.transform=savedTransform;
 	cachedColumnWidth=colWidth;
