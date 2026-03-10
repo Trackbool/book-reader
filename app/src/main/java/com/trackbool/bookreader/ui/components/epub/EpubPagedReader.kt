@@ -14,6 +14,7 @@ internal fun EpubPagedReader(
     onCurrentPageChanged: (Int) -> Unit,
     onTotalPagesCalculated: (Int) -> Unit,
     onContentReady: () -> Unit,
+    onProgressChanged: (Float, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val bridge = remember {
@@ -21,6 +22,12 @@ internal fun EpubPagedReader(
             onContentReady = onContentReady,
             onPagesCalculated = { total -> onTotalPagesCalculated(total) },
             onPageChanged = { current, _ -> onCurrentPageChanged(current) },
+            onProgressChanged = { readingProgress, documentPositionData ->
+                onProgressChanged(
+                    readingProgress,
+                    documentPositionData
+                )
+            }
         )
     }
 

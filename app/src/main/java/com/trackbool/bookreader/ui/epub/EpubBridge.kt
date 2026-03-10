@@ -7,6 +7,7 @@ class EpubBridge(
     private val onContentReady: () -> Unit,
     private val onPagesCalculated: (totalPages: Int) -> Unit,
     private val onPageChanged: (current: Int, total: Int) -> Unit,
+    private val onProgressChanged: (readingProgress: Float, documentPositionData: String) -> Unit
 ) : EpubJavascriptInterface {
 
     @JavascriptInterface
@@ -25,6 +26,17 @@ class EpubBridge(
     fun onPageChanged(current: Int, total: Int) {
         Log.d("EpubBridge", "onPageChanged called. Page: $current/$total")
         onPageChanged.invoke(current, total)
+    }
+
+    @JavascriptInterface
+    fun onProgressChanged(readingProgress: Float, documentPositionData: String) {
+        Log.d(
+            "EpubBridge",
+            "onProgressChanged called. " +
+                    "Reading progress: $readingProgress. " +
+                    "Document position data: $documentPositionData"
+        )
+        onProgressChanged.invoke(readingProgress, documentPositionData)
     }
 
     @JavascriptInterface

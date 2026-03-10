@@ -39,9 +39,10 @@ fun BookReaderScreen(
     onCurrentPageChanged: (Int) -> Unit,
     onTotalPagesCalculated: (Int) -> Unit,
     onContentReady: () -> Unit,
+    onProgressChanged: (Float, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val readerMode = ReaderMode.PAGED
+    val readerMode = ReaderMode.SCROLL
 
     Scaffold(
         topBar = {
@@ -101,6 +102,7 @@ fun BookReaderScreen(
                             book = book,
                             chapters = chapters,
                             onContentReady = onContentReady,
+                            onProgressChanged =  onProgressChanged,
                             modifier = Modifier.fillMaxSize(),
                         )
 
@@ -110,6 +112,7 @@ fun BookReaderScreen(
                             onContentReady = onContentReady,
                             onCurrentPageChanged = onCurrentPageChanged,
                             onTotalPagesCalculated = onTotalPagesCalculated,
+                            onProgressChanged =  onProgressChanged,
                             modifier = Modifier.fillMaxSize(),
                         )
                     }

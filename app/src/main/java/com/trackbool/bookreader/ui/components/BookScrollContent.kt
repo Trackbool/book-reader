@@ -12,10 +12,17 @@ fun BookScrollContent(
     book: Book,
     chapters: List<ChapterView>,
     onContentReady: () -> Unit,
+    onProgressChanged: (Float, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (book.fileType) {
-        BookFileType.EPUB -> EpubScrollReader(book, chapters, onContentReady, modifier)
+        BookFileType.EPUB -> EpubScrollReader(
+            book = book,
+            chapters = chapters,
+            onContentReady = onContentReady,
+            onProgressChanged = onProgressChanged,
+            modifier = modifier
+        )
         BookFileType.PDF -> UnsupportedFormatMessage(format = "PDF", modifier = modifier)
         BookFileType.NONE -> UnsupportedFormatMessage(format = "Unknown", modifier = modifier)
     }

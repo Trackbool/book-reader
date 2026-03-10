@@ -60,6 +60,17 @@ internal fun EpubWebViewBase(
 
         val chaptersJson = chapters.toChaptersJson()
         wv.evaluateJavascript("appendChapters('$chaptersJson');", null)
+
+        if (book.documentPositionData.isNotEmpty()) {
+            try {
+                val json = JSONObject(book.documentPositionData)
+                val chapterId = json.getString("chapterId")
+                val nodeIndex = json.getInt("nodeIndex")
+                wv.evaluateJavascript("restoreProgress('$chapterId', $nodeIndex);", null)
+            } catch (e: Exception) {
+                Log.e("EpubWebViewBase", "Failed to restore progress", e)
+            }
+        }
     }
 
     DisposableEffect(Unit) {

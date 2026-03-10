@@ -12,6 +12,7 @@ internal fun EpubScrollReader(
     book: Book,
     chapters: List<ChapterView>,
     onContentReady: () -> Unit,
+    onProgressChanged: (Float, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val bridge = remember {
@@ -19,6 +20,12 @@ internal fun EpubScrollReader(
             onContentReady = onContentReady,
             onPagesCalculated = {},
             onPageChanged = { _, _ -> },
+            onProgressChanged = { readingProgress, documentPositionData ->
+                onProgressChanged(
+                    readingProgress,
+                    documentPositionData
+                )
+            }
         )
     }
 

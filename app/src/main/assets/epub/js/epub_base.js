@@ -1,3 +1,21 @@
+const readerHooks = {
+  _listeners: {},
+  on(event, fn) {
+    (this._listeners[event] ??= []).push(fn);
+  },
+  emit(event, ...args) {
+    (this._listeners[event] ?? []).forEach(fn => fn(...args));
+  }
+};
+
+function debounce(fn, delay) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
 function decodeB64(b64) {
   const bytes = atob(b64);
   const arr = new Uint8Array(bytes.length);

@@ -48,7 +48,8 @@ data class Book(
     val isCompleted: Boolean = false,
     val filePath: String = "",
     val fileType: BookFileType = BookFileType.NONE,
-    val fileName: String = ""
+    val fileName: String = "",
+    val documentPositionData: String = ""
 ) {
     val progressPercent: Int
         get() = (readingProgress * 100).toInt()

@@ -102,21 +102,25 @@ class BookReaderViewModel @Inject constructor(
 
     fun onPageChanged(page: Int) {
         _currentPage.value = page
-        updateProgress()
     }
 
     fun onTotalPagesCalculated(total: Int) {
         _totalPages.value = total
     }
 
-    private fun updateProgress() {
+    fun onProgressChanged(readingProgress: Float, documentPositionData: String) {
+        updateProgress(readingProgress, documentPositionData)
+    }
+
+    private fun updateProgress(readingProgress: Float, documentPositionData: String) {
         val book = _book.value ?: return
-        val current = _currentPage.value
-        val total = _totalPages.value
-        if (total <= 0) return
 
         viewModelScope.launch {
-            val result = updateBookProgressUseCase(book, current, total)
+            val result = updateBookProgressUseCase(
+                book = book,
+                readingProgress = readingProgress,
+                documentPositionData = documentPositionData
+            )
             result.onSuccess {
                 _book.value = it
             }
@@ -133,6 +137,7 @@ class BookReaderViewModel @Inject constructor(
             filePath = book.filePath,
             pageRange = chapterIndex..chapterIndex,
         )
+
         BookFileType.NONE -> ChapterContent.Html(rawContent)
     }
 }

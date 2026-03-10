@@ -80,6 +80,7 @@ fun AppNavGraph(
                     onBack = { navController.popBackStack() },
                     onCurrentPageChanged = viewModel::onPageChanged,
                     onTotalPagesCalculated = viewModel::onTotalPagesCalculated,
+                    onProgressChanged = viewModel::onProgressChanged,
                     onContentReady = viewModel::onContentReady,
                 )
             }

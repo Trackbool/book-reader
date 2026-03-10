@@ -67,7 +67,8 @@ class BookRepositoryImpl(private val bookDao: BookDao) : BookRepository {
         isCompleted = isCompleted,
         filePath = filePath,
         fileType = fileType.name,
-        fileName = fileName
+        fileName = fileName,
+        documentPositionData = documentPositionData
     )
 
     private fun BookEntity.toDomain() = Book(
@@ -80,6 +81,7 @@ class BookRepositoryImpl(private val bookDao: BookDao) : BookRepository {
         isCompleted = isCompleted,
         filePath = filePath,
         fileType = try { BookFileType.valueOf(fileType) } catch (e: Exception) { BookFileType.NONE },
-        fileName = fileName
+        fileName = fileName,
+        documentPositionData = documentPositionData
     )
 }
