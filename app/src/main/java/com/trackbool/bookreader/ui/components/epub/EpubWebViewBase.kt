@@ -24,6 +24,8 @@ import com.trackbool.bookreader.ui.epub.ASSET_BASE_URL
 import com.trackbool.bookreader.ui.epub.EpubJavascriptInterface
 import com.trackbool.bookreader.ui.epub.EpubWebViewClient
 import com.trackbool.bookreader.ui.model.ChapterView
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -58,8 +60,13 @@ internal fun EpubWebViewBase(
             return@LaunchedEffect
         }
 
-        val chaptersJson = chapters.toChaptersJson()
-        wv.evaluateJavascript("loadContent('$chaptersJson', '${book.documentPositionData}');", null)
+        val (chaptersJson, progressJson) = withContext(Dispatchers.IO) {
+            val cJson = chapters.toChaptersJson()
+            val pJson = book.documentPositionData.escapeForJsSingleQuote()
+            cJson to pJson
+        }
+
+        wv.evaluateJavascript("loadContent('$chaptersJson', '$progressJson');", null)
     }
 
     DisposableEffect(Unit) {
@@ -121,3 +128,11 @@ private fun List<ChapterView>.toChaptersJson(): String =
 
 private fun ByteArray.toBase64(): String =
     Base64.encodeToString(this, Base64.NO_WRAP)
+
+private fun String.escapeForJsSingleQuote(): String =
+    this
+        .replace("\\", "\\\\")
+        .replace("'", "\\'")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\u0000", "\\u0000")

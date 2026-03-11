@@ -23,16 +23,23 @@ async function loadContent(chaptersJson, progressJson = "") {
     });
 
     await waitForImagesAndFonts(shadowRoot);
+
+    // FIX #2: Use double rAF to ensure layout is fully complete before
+    // trying to read getBoundingClientRect() in restoreProgress.
+    // A single rAF fires before the browser has painted; the second one
+    // fires after the first paint, when all dimensions are stable.
     requestAnimationFrame(() => {
-        setupChapterObserver();
-        setupScrollTracking();
+        requestAnimationFrame(() => {
+            setupChapterObserver();
+            setupScrollTracking();
 
-        if (progressJson) {
-            const { chapterId, nodeIndex, nodeOffset } = JSON.parse(progressJson);
-            restoreProgress(chapterId, nodeIndex, nodeOffset);
-        }
+            if (progressJson) {
+                const { chapterId, nodeIndex, nodeOffset } = JSON.parse(progressJson);
+                restoreProgress(chapterId, nodeIndex, nodeOffset);
+            }
 
-        bridge.onContentReady();
+            bridge.onContentReady();
+        });
     });
 }
 
@@ -55,6 +62,16 @@ function getGlobalProgress() {
     return isAtBottom() ? 1 : Math.min(1, window.scrollY / totalHeight);
 }
 
+function getEffectiveLineHeight(node) {
+    const style = getComputedStyle(node);
+    const raw = style.lineHeight;
+    if (raw && raw !== 'normal') {
+        const parsed = parseFloat(raw);
+        if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
+    return (parseFloat(style.fontSize) || 16) * 1.2;
+}
+
 function getVisibleNodeData(section) {
     const nodes = [...section.querySelectorAll(BLOCK_SELECTOR)];
 
@@ -72,9 +89,10 @@ function getVisibleNodeData(section) {
     let nodeOffset = 0;
     if (bestNode) {
         const rect = bestNode.getBoundingClientRect();
-        const fontSize = parseFloat(getComputedStyle(bestNode).fontSize) || 1;
-        const linesTotal = rect.height / fontSize;
-        const linesScrolled = -rect.top / fontSize;
+        // FIX #1: use real line height instead of fontSize
+        const lineHeight = getEffectiveLineHeight(bestNode);
+        const linesTotal = rect.height / lineHeight;
+        const linesScrolled = -rect.top / lineHeight;
         nodeOffset = parseFloat(
             Math.max(0, Math.min(1, linesScrolled / linesTotal)).toFixed(4)
         );
@@ -109,7 +127,7 @@ function setupChapterObserver() {
             .filter(([, r]) => r > 0)
             .sort(([a], [b]) => (orderMap.get(a) ?? 0) - (orderMap.get(b) ?? 0))[0];
 
-        if (firstVisible) currentChapterId = firstVisible[0];
+        if (firstVisible && !scrollLocked) currentChapterId = firstVisible[0];
     }, { threshold: [0, 0.01, 0.1, 0.25, 0.5, 0.75, 1.0] });
 
     sections.forEach(s => observer.observe(s));
@@ -128,24 +146,34 @@ function setupScrollTracking() {
     window.addEventListener('scroll', emitDebounced, { passive: true });
 }
 
+let scrollLocked = false;
+
 function restoreProgress(chapterId, nodeIndex, nodeOffset = 0) {
+    scrollLocked = true;
     currentChapterId = chapterId;
 
     const section = shadowRoot.getElementById(chapterId);
-    if (!section) return;
+    if (!section) {
+        scrollLocked = false;
+        return;
+    }
 
     const nodes = [...section.querySelectorAll(BLOCK_SELECTOR)];
     const target = nodes[nodeIndex];
-    if (!target) return;
+    if (!target) {
+        scrollLocked = false;
+        return;
+    }
 
     const rect = target.getBoundingClientRect();
-    const fontSize = parseFloat(getComputedStyle(target).fontSize) || 1;
-    const linesTotal = rect.height / fontSize;
-    const top = rect.top + window.scrollY + nodeOffset * linesTotal * fontSize;
+    const lineHeight = getEffectiveLineHeight(target);
+    const linesTotal = rect.height / lineHeight;
+    const top = rect.top + window.scrollY + nodeOffset * linesTotal * lineHeight;
 
     window.scrollTo({ top, behavior: 'instant' });
 
     requestAnimationFrame(() => {
+        scrollLocked = false;
         emitProgress();
     });
 }
