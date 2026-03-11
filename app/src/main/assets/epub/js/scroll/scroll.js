@@ -47,35 +47,32 @@ function getGlobalProgress() {
     return isAtBottom() ? 1 : Math.min(1, window.scrollY / totalHeight);
 }
 
-function getVisibleNodeIndex(section) {
+function getVisibleNodeData(section) {
     const nodes = [...section.querySelectorAll(BLOCK_SELECTOR)];
-    const readingLine = window.innerHeight * 0.3;
 
     let bestIndex = 0;
-    let bestDistance = Infinity;
-    let foundFullyVisible = false;
 
-    nodes.forEach((node, i) => {
-        const rect = node.getBoundingClientRect();
-        if (rect.bottom < 0 || rect.top > window.innerHeight) return;
-
-        const fullyVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
-        const distance = Math.abs(rect.top - readingLine);
-
-        if (fullyVisible && !foundFullyVisible) {
-            foundFullyVisible = true;
-            bestDistance = distance;
+    for (let i = 0; i < nodes.length; i++) {
+        const rect = nodes[i].getBoundingClientRect();
+        if (rect.bottom > 0 && rect.top < window.innerHeight) {
             bestIndex = i;
-        } else if (fullyVisible && distance < bestDistance) {
-            bestDistance = distance;
-            bestIndex = i;
-        } else if (!foundFullyVisible && distance < bestDistance) {
-            bestDistance = distance;
-            bestIndex = i;
+            break;
         }
-    });
+    }
 
-    return bestIndex;
+    const bestNode = nodes[bestIndex];
+    let nodeOffset = 0;
+    if (bestNode) {
+        const rect = bestNode.getBoundingClientRect();
+        const fontSize = parseFloat(getComputedStyle(bestNode).fontSize) || 1;
+        const linesTotal = rect.height / fontSize;
+        const linesScrolled = -rect.top / fontSize;
+        nodeOffset = parseFloat(
+            Math.max(0, Math.min(1, linesScrolled / linesTotal)).toFixed(4)
+        );
+    }
+
+    return { nodeIndex: bestIndex, nodeOffset };
 }
 
 function emitProgress() {
@@ -83,31 +80,31 @@ function emitProgress() {
     const section = shadowRoot.getElementById(currentChapterId);
     if (!section) return;
 
+    const { nodeIndex, nodeOffset } = getVisibleNodeData(section);
     bridge.onProgressChanged(getGlobalProgress(), JSON.stringify({
         chapterId: currentChapterId,
-        nodeIndex: getVisibleNodeIndex(section)
+        nodeIndex,
+        nodeOffset,
     }));
 }
 
 function setupChapterObserver() {
     const ratios = new Map();
 
+    const sections = [...shadowRoot.querySelectorAll('section[id]')];
+    const orderMap = new Map(sections.map((s, i) => [s.id, i]));
+
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(e => ratios.set(e.target.id, e.intersectionRatio));
 
-        let bestId = null;
-        let bestRatio = -1;
-        ratios.forEach((ratio, id) => {
-            if (ratio > bestRatio) {
-                bestRatio = ratio;
-                bestId = id;
-            }
-        });
+        const firstVisible = [...ratios.entries()]
+            .filter(([, r]) => r > 0)
+            .sort(([a], [b]) => (orderMap.get(a) ?? 0) - (orderMap.get(b) ?? 0))[0];
 
-        if (bestId) currentChapterId = bestId;
-    }, { threshold: [0, 0.1, 0.25, 0.5, 0.75, 1.0] });
+        if (firstVisible) currentChapterId = firstVisible[0];
+    }, { threshold: [0, 0.01, 0.1, 0.25, 0.5, 0.75, 1.0] });
 
-    shadowRoot.querySelectorAll('section[id]').forEach(s => observer.observe(s));
+    sections.forEach(s => observer.observe(s));
 }
 
 function debounce(fn, delay) {
@@ -123,8 +120,8 @@ function setupScrollTracking() {
     window.addEventListener('scroll', emitDebounced, { passive: true });
 }
 
-function restoreProgress(chapterId, nodeIndex) {
-    currentChapterId = chapterId
+function restoreProgress(chapterId, nodeIndex, nodeOffset = 0) {
+    currentChapterId = chapterId;
 
     const section = shadowRoot.getElementById(chapterId);
     if (!section) return;
@@ -133,11 +130,17 @@ function restoreProgress(chapterId, nodeIndex) {
     const target = nodes[nodeIndex];
     if (!target) return;
 
-    const readingLine = window.innerHeight * 0.3;
-    const top = target.getBoundingClientRect().top + window.scrollY - readingLine;
+    const rect = target.getBoundingClientRect();
+    const fontSize = parseFloat(getComputedStyle(target).fontSize) || 1;
+    const linesTotal = rect.height / fontSize;
+    const top = rect.top + window.scrollY + nodeOffset * linesTotal * fontSize;
+
     window.scrollTo({ top, behavior: 'instant' });
-    emitProgress();
-};
+
+    requestAnimationFrame(() => {
+        emitProgress();
+    });
+}
 
 readerHooks.on('contentReady', () => {
     setupChapterObserver();
