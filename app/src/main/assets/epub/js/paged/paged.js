@@ -161,7 +161,10 @@ async function loadContent(chaptersJson, progressJson = "") {
                 restoreProgress(chapterId, nodeIndex, nodeOffset);
             }
 
-            bridge.onContentReady();
+            setTimeout(() => {
+                shadowRoot.host.style.opacity = '1';
+                bridge.onContentReady();
+            }, 0);
         });
     });
 }

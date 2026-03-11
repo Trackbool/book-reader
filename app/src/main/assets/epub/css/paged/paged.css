@@ -3,6 +3,7 @@
   width:var(--vw,100vw);
   height:var(--vh,100vh);
   overflow:hidden;
+  opacity: 0;
 }
 
 #pager{
