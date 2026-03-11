@@ -104,6 +104,7 @@ async function loadContent(chaptersJson) {
 
 	requestAnimationFrame(() => {
 		calculateTotalPages();
+		bridge.onContentReady();
 	});
 }
 

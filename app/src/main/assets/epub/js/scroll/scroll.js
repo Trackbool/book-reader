@@ -13,7 +13,7 @@ function initShadow() {
     shadowRoot.appendChild(link);
 }
 
-async function loadContent(chaptersJson) {
+async function loadContent(chaptersJson, progressJson = "") {
     const chapters = JSON.parse(chaptersJson);
     chapters.forEach(ch => {
         const section = document.createElement('section');
@@ -24,7 +24,15 @@ async function loadContent(chaptersJson) {
 
     await waitForImagesAndFonts(shadowRoot);
     requestAnimationFrame(() => {
-        readerHooks.emit('contentReady');
+        setupChapterObserver();
+        setupScrollTracking();
+
+        if (progressJson) {
+            const { chapterId, nodeIndex, nodeOffset } = JSON.parse(progressJson);
+            restoreProgress(chapterId, nodeIndex, nodeOffset);
+        }
+
+        bridge.onContentReady();
     });
 }
 
@@ -141,11 +149,6 @@ function restoreProgress(chapterId, nodeIndex, nodeOffset = 0) {
         emitProgress();
     });
 }
-
-readerHooks.on('contentReady', () => {
-    setupChapterObserver();
-    setupScrollTracking();
-});
 
 function init() {
     initShadow();

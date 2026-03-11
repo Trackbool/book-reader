@@ -1,13 +1,3 @@
-const readerHooks = {
-  _listeners: {},
-  on(event, fn) {
-    (this._listeners[event] ??= []).push(fn);
-  },
-  emit(event, ...args) {
-    (this._listeners[event] ?? []).forEach(fn => fn(...args));
-  }
-};
-
 function debounce(fn, delay) {
   let timer;
   return (...args) => {
@@ -15,10 +5,6 @@ function debounce(fn, delay) {
     timer = setTimeout(() => fn(...args), delay);
   };
 }
-
-function notifyReady() {
-  bridge.onContentReady();
-};
 
 function decodeB64(b64) {
   const bytes = atob(b64);
