@@ -332,9 +332,9 @@ function emitProgress() {
 
             if (currentPage <= nodeEndPage) {
                 // currentPage is inside this node's range — exact anchor found.
-                const nodeOffset = parseFloat(
-                    ((currentPage - nodeStartPage) / nodePageCount).toFixed(4)
-                );
+                let nodeOffset = (currentPage - nodeStartPage) / nodePageCount;
+                nodeOffset = Math.max(0, Math.min(0.999999, nodeOffset));
+
                 _reportProgress(section.id, i, nodeOffset);
                 return;
             }
@@ -342,13 +342,22 @@ function emitProgress() {
             // Node ends before currentPage; keep as running candidate.
             anchorChapterId  = section.id;
             anchorNodeIndex  = i;
-            anchorNodeOffset = 1; // conceptually at the trailing edge of a passed node
+            anchorNodeOffset = 0.999999; // conceptually at the trailing edge of a passed node
         }
     }
 
     // Fallback: currentPage has no node starting or spanning it (blank gap).
     // Report the last node seen before currentPage.
     if (anchorChapterId) {
+        const section = shadowRoot.getElementById(anchorChapterId);
+        const nodes = section.querySelectorAll(BLOCK_SELECTOR);
+        const lastNode = nodes[anchorNodeIndex];
+
+        // Calculate actual offset even if it's >= 1
+        const nodeStartPage = getNodeStartPage(lastNode);
+        const nodePageCount = getNodePageCount(lastNode);
+        anchorNodeOffset = (currentPage - nodeStartPage) / nodePageCount;
+
         _reportProgress(anchorChapterId, anchorNodeIndex, anchorNodeOffset);
     }
 }
@@ -399,8 +408,14 @@ function restoreProgress(chapterId, nodeIndex, nodeOffset = 0) {
     const nodeStartPage = getNodeStartPage(target);
     const nodePageCount = getNodePageCount(target);
 
+    const EPS = 1e-9;
+
     // floor: land on the page that *starts* at nodeOffset within the node.
-    const targetPage = nodeStartPage + Math.floor(nodeOffset * nodePageCount);
+    let pageIndexWithinNode = Math.floor(nodeOffset * nodePageCount + EPS);
+    pageIndexWithinNode = Math.max(0, pageIndexWithinNode);
+
+    const targetPage = nodeStartPage + pageIndexWithinNode;
+
     goToPage(Math.min(targetPage, totalPages - 1), true);
 }
 
