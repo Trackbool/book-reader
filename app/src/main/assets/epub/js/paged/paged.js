@@ -153,14 +153,16 @@ async function loadContent(chaptersJson, progressJson = "") {
     await waitForImagesAndFonts(shadowRoot);
 
     requestAnimationFrame(() => {
-        calculateTotalPages();
+        requestAnimationFrame(() => {
+            calculateTotalPages();
 
-        if (progressJson) {
-            const { chapterId, nodeIndex, nodeOffset = 0 } = JSON.parse(progressJson);
-            restoreProgress(chapterId, nodeIndex, nodeOffset);
-        }
+            if (progressJson) {
+                const { chapterId, nodeIndex, nodeOffset = 0 } = JSON.parse(progressJson);
+                restoreProgress(chapterId, nodeIndex, nodeOffset);
+            }
 
-        bridge.onContentReady();
+            bridge.onContentReady();
+        });
     });
 }
 
