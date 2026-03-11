@@ -11,7 +11,7 @@
 //   extent (in CSS-column layout nodes flow left-to-right across columns):
 //     0   = current page is the one where the node starts
 //     0.5 = current page starts halfway through the node's width
-//     1   = current page is at the very end of the node
+//     ~1  = current page is at the very end of the node (stored as 0.999999)
 //
 //   Storing a fraction instead of a page count makes the position stable
 //   across font-size changes: a node spanning 2 pages at small font may span
@@ -192,7 +192,7 @@ function goToPage(page, forceEmit = false) {
     }
 }
 
-// Scrolls to the element with the given ID by computing its page index.
+// Navigates to the element with the given ID by computing its page index.
 function navigateToId(id) {
     const pager = shadowRoot.getElementById('pager');
     const el    = shadowRoot.getElementById(id);
