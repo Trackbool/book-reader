@@ -310,49 +310,61 @@ let lastProgress = null;
 
 // Finds the anchor node for `currentPage` and reports progress to Android.
 //
-// For every node we compute:
-//   nodeStartPage — first page the node appears on          (cached)
-//   nodePageCount — how many pages it spans                 (cached)
-//   nodeEndPage   — nodeStartPage + nodePageCount - 1       (cached)
+// Sections are scanned in order. For each section:
+//   - If the entire section ends before currentPage, it is skipped in O(1)
+//     and its last node is kept as the running best candidate (anchor fallback).
+//   - If the entire section starts after currentPage, the search stops.
+//   - Otherwise a binary search finds the last node with startPage <= currentPage.
 //
-// If currentPage ∈ [nodeStartPage, nodeEndPage], this node is the anchor:
-//   nodeOffset = (currentPage - nodeStartPage) / nodePageCount   ∈ [0, 1)
+// All geometry (startPage, pageCount, endPage) is read from cachedSections,
+// never from the DOM.
+//
+// If the found node spans currentPage:
+//   nodeOffset = (currentPage - startPage) / pageCount   ∈ [0, 1)
 //
 // nodeOffset is a fraction of the node's own span, so it stays meaningful
-// after a font-size change that alters nodePageCount:
+// after a font-size change that alters pageCount:
 //   small font → node spans 2 pages, saved nodeOffset = 0.5 → page 1 of 2
-//   large font → node spans 4 pages, restored nodeOffset = 0.5 → page 2 of 4  ✓
+//   large font → node spans 4 pages, restored nodeOffset = 0.5 → page 2 of 4
 function emitProgress() {
     if (!pager) return;
 
     const sections = cachedSections;
 
-    // Running best candidate: the node whose range most recently preceded
-    // currentPage. Used as fallback when no node's range encloses it.
     let anchorChapterId  = sections[0]?.id ?? null;
     let anchorNodeIndex  = 0;
     let anchorNodeOffset = 0;
 
     for (const section of sections) {
         const nodes = section.nodes;
+        if (!nodes.length) continue;
 
-        for (let i = 0; i < nodes.length; i++) {
-            const { startPage, pageCount, endPage } = nodes[i];
-
-            if (startPage > currentPage) break;
-
-            if (currentPage <= endPage) {
-                let nodeOffset = (currentPage - startPage) / pageCount;
-                nodeOffset = Math.max(0, Math.min(0.999999, nodeOffset));
-
-                _reportProgress(section.id, i, nodeOffset);
-                return;
-            }
-
-            anchorChapterId  = section.id;
-            anchorNodeIndex  = i;
-            anchorNodeOffset = 0.999999;
+        if (nodes[nodes.length - 1].endPage < currentPage) {
+            anchorChapterId = section.id;
+            anchorNodeIndex = nodes.length - 1;
+            continue;
         }
+
+        if (nodes[0].startPage > currentPage) break;
+
+        let lo = 0, hi = nodes.length - 1, found = 0;
+        while (lo <= hi) {
+            const mid = (lo + hi) >> 1;
+            if (nodes[mid].startPage <= currentPage) { found = mid; lo = mid + 1; }
+            else hi = mid - 1;
+        }
+
+        const { startPage, pageCount, endPage } = nodes[found];
+
+        if (currentPage <= endPage) {
+            let nodeOffset = (currentPage - startPage) / pageCount;
+            nodeOffset = Math.max(0, Math.min(0.999999, nodeOffset));
+            _reportProgress(section.id, found, nodeOffset);
+            return;
+        }
+
+        anchorChapterId = section.id;
+        anchorNodeIndex = found;
     }
 
     // Fallback: currentPage has no node starting or spanning it (blank gap).
