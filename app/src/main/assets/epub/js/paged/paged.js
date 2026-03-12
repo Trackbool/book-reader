@@ -193,19 +193,17 @@ function goToPage(page, forceEmit = false) {
 
 // Navigates to the element with the given ID by computing its page index.
 function navigateToId(id) {
-    const el    = shadowRoot.getElementById(id);
+    const el = shadowRoot.getElementById(id);
     if (!pager || !el) return;
 
     const colWidth = getRealColumnWidth();
 
-    let offset = 0;
-    let node = el;
-    while (node && node !== pager) {
-        offset += node.offsetLeft;
-        node = node.offsetParent;
-    }
+    const pagerRect = pager.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
 
-    const page = Math.floor((offset + colWidth / 2) / colWidth);
+    const relativeOffset = elRect.left - pagerRect.left;
+
+    const page = Math.floor((relativeOffset + 2) / colWidth);
     goToPage(page);
 }
 
