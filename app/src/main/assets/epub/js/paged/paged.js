@@ -44,8 +44,8 @@ let pager;
 let cachedColumnWidth = null;
 
 // Cached section data built once after content loads. Each entry is:
-//   { id: string, el: HTMLElement, nodes: Element[] }
-// Avoids repeated querySelectorAll calls on the hot navigation path.
+//   { id: string, el: HTMLElement, nodes: Array<{ el: Element, startPage: number, pageCount: number, endPage: number }> }
+// Avoids repeated querySelectorAll calls and DOM geometry reads on the hot navigation path.
 let cachedSections = [];
 
 // 0-based index of the page currently shown.
@@ -78,10 +78,14 @@ function initShadow() {
 
     updateSizes();
 
+    // Debounced to avoid recalculating layout tens of times per second during
+    // rotation or font-size changes.
+    let resizeTimer;
     window.addEventListener('resize', () => {
         cachedColumnWidth = null;
         updateSizes();
-        recalculateAfterResize();
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(recalculateAfterResize, 150);
     });
 
     initSwipeGesture();
@@ -179,11 +183,17 @@ async function loadContent(chaptersJson, progressJson = "") {
 
 // Builds cachedSections from the live DOM. Called once after content loads
 // and again after a resize only if the section structure could have changed.
+// Node geometry (startPage, pageCount, endPage) is computed here once and
+// cached so emitProgress() never needs to read the DOM on the hot path.
 function buildSectionCache() {
     cachedSections = [...pager.querySelectorAll('section[id]')].map(section => ({
         id: section.id,
         el: section,
-        nodes: [...section.querySelectorAll(BLOCK_SELECTOR)]
+        nodes: [...section.querySelectorAll(BLOCK_SELECTOR)].map(node => {
+            const startPage = getNodeStartPage(node);
+            const pageCount = getNodePageCount(node);
+            return { el: node, startPage, pageCount, endPage: startPage + pageCount - 1 };
+        })
     }));
 }
 
@@ -301,9 +311,9 @@ let lastProgress = null;
 // Finds the anchor node for `currentPage` and reports progress to Android.
 //
 // For every node we compute:
-//   nodeStartPage — first page the node appears on          (via offsetLeft)
-//   nodePageCount — how many pages it spans                 (via offsetWidth)
-//   nodeEndPage   — nodeStartPage + nodePageCount - 1
+//   nodeStartPage — first page the node appears on          (cached)
+//   nodePageCount — how many pages it spans                 (cached)
+//   nodeEndPage   — nodeStartPage + nodePageCount - 1       (cached)
 //
 // If currentPage ∈ [nodeStartPage, nodeEndPage], this node is the anchor:
 //   nodeOffset = (currentPage - nodeStartPage) / nodePageCount   ∈ [0, 1)
@@ -327,15 +337,12 @@ function emitProgress() {
         const nodes = section.nodes;
 
         for (let i = 0; i < nodes.length; i++) {
-            const nodeStartPage = getNodeStartPage(nodes[i]);
+            const { startPage, pageCount, endPage } = nodes[i];
 
-            if (nodeStartPage > currentPage) break;
+            if (startPage > currentPage) break;
 
-            const nodePageCount = getNodePageCount(nodes[i]);
-            const nodeEndPage   = nodeStartPage + nodePageCount - 1;
-
-            if (currentPage <= nodeEndPage) {
-                let nodeOffset = (currentPage - nodeStartPage) / nodePageCount;
+            if (currentPage <= endPage) {
+                let nodeOffset = (currentPage - startPage) / pageCount;
                 nodeOffset = Math.max(0, Math.min(0.999999, nodeOffset));
 
                 _reportProgress(section.id, i, nodeOffset);
@@ -355,9 +362,8 @@ function emitProgress() {
         const lastNode = section.nodes[anchorNodeIndex];
 
         // Calculate actual offset even if it's >= 1
-        const nodeStartPage = getNodeStartPage(lastNode);
-        const nodePageCount = getNodePageCount(lastNode);
-        anchorNodeOffset = (currentPage - nodeStartPage) / nodePageCount;
+        const { startPage, pageCount } = lastNode;
+        anchorNodeOffset = (currentPage - startPage) / pageCount;
 
         _reportProgress(anchorChapterId, anchorNodeIndex, anchorNodeOffset);
     }
@@ -401,13 +407,12 @@ function restoreProgress(chapterId, nodeIndex, nodeOffset = 0) {
         // nodeIndex out of range (chapter was shortened?).
         // Land on the last available node of the chapter as a best-effort.
         const lastNode = nodes[nodes.length - 1];
-        if (lastNode) goToPage(getNodeStartPage(lastNode));
+        if (lastNode) goToPage(lastNode.startPage);
         else          navigateToId(chapterId);
         return;
     }
 
-    const nodeStartPage = getNodeStartPage(target);
-    const nodePageCount = getNodePageCount(target);
+    const { startPage: nodeStartPage, pageCount: nodePageCount } = target;
 
     const EPS = 1e-9;
 
@@ -427,6 +432,7 @@ function restoreProgress(chapterId, nodeIndex, nodeOffset = 0) {
 // node anchor instead.
 function recalculateAfterResize() {
     cachedColumnWidth = null;
+    buildSectionCache();
     calculateTotalPages();
 
     if (lastProgress) {
