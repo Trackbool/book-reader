@@ -29,11 +29,6 @@
 //   bridge.onProgressChanged(globalProgress: number, progressJson: string)
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Selects all block-level nodes used as progress anchors.
-// Must match the scroll reader's selector so the same progress JSON is valid
-// in both modes. Note the comma before `img` — see scroll reader bug #1.
-const BLOCK_SELECTOR = 'p, li, dt, dd, figcaption, blockquote, figure, h1, h2, h3, h4, h5, h6, img';
-
 // Reference to the Shadow Root that hosts the #pager div.
 let shadowRoot;
 

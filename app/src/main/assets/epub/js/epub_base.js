@@ -1,3 +1,8 @@
+// Selects all block-level nodes used as progress anchors.
+// Must match the scroll reader's selector so the same progress JSON is valid
+// in both modes.
+const BLOCK_SELECTOR = 'p, li, dt, dd, figcaption, blockquote, figure, h1, h2, h3, h4, h5, h6, img, svg';
+
 function debounce(fn, delay) {
   let timer;
   return (...args) => {

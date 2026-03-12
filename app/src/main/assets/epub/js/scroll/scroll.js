@@ -18,11 +18,6 @@
 //   bridge.onProgressChanged(globalProgress: number, progressJson: string)
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Selects all block-level nodes used as progress anchors.
-// Inline elements are intentionally excluded: their rects change with font
-// size and reflow, making them unreliable as stable reference points.
-const BLOCK_SELECTOR = 'p, li, dt, dd, figcaption, blockquote, figure, h1, h2, h3, h4, h5, h6, img';
-
 // Reference to the Shadow Root that hosts all chapter <section> elements.
 // Kept at module scope so all functions can access it without threading it
 // through every call.
