@@ -210,14 +210,19 @@ function navigateToId(id) {
 // ─── Page count ──────────────────────────────────────────────────────────────
 
 function getTotalPages() {
-    if (!pager) return 0;
+    const pager = shadowRoot.getElementById('pager');
+    if (!pager || !pager.firstElementChild) return 0;
 
-    const colWidth    = getRealColumnWidth();
-    const scrollWidth = pager.scrollWidth;
-    cachedColumnWidth = colWidth;
+    const colWidth = getRealColumnWidth();
 
-    const EPS = 0.5;
-    return Math.max(1, Math.ceil((scrollWidth - EPS) / colWidth));
+    const range = document.createRange();
+    range.selectNodeContents(pager);
+
+    const rects = range.getBoundingClientRect();
+    const preciseFullWidth = rects.width;
+    const total = Math.ceil((preciseFullWidth - 0.1) / colWidth);
+
+    return Math.max(1, total);
 }
 
 function calculateTotalPages() {
