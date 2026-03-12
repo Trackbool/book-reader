@@ -212,7 +212,6 @@ function navigateToId(id) {
 // ─── Page count ──────────────────────────────────────────────────────────────
 
 function getTotalPages() {
-    const pager = shadowRoot.getElementById('pager');
     if (!pager || !pager.firstElementChild) return 0;
 
     const colWidth = getRealColumnWidth();
