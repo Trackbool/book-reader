@@ -37,6 +37,9 @@ const BLOCK_SELECTOR = 'p, li, dt, dd, figcaption, blockquote, figure, h1, h2, h
 // Reference to the Shadow Root that hosts the #pager div.
 let shadowRoot;
 
+// Reference to #pager div
+let pager;
+
 // Cached column width. Invalidated on resize to avoid stale measurements.
 let cachedColumnWidth = null;
 
@@ -57,7 +60,7 @@ function initShadow() {
     link.href = 'epub/css/paged/paged.css';
     shadowRoot.appendChild(link);
 
-    const pager = document.createElement('div');
+    pager = document.createElement('div');
     pager.id = 'pager';
     shadowRoot.appendChild(pager);
 
@@ -97,7 +100,6 @@ function initSwipeGesture() {
     host.addEventListener('touchmove', (e) => {
         if (!dragging) return;
 
-        const pager = shadowRoot.getElementById('pager');
         const colWidth = getRealColumnWidth();
         const deltaX = e.touches[0].clientX - startX;
 
@@ -112,7 +114,6 @@ function initSwipeGesture() {
         if (!dragging) return;
         dragging = false;
 
-        const pager = shadowRoot.getElementById('pager');
         const colWidth = getRealColumnWidth();
         const deltaX = e.changedTouches[0].clientX - startX;
         const velocity = Math.abs(deltaX) / (Date.now() - startTime);
@@ -140,7 +141,6 @@ function initSwipeGesture() {
 // progressJson — optional JSON object { chapterId, nodeIndex, nodeOffset }
 async function loadContent(chaptersJson, progressJson = "") {
     const chapters = JSON.parse(chaptersJson);
-    const pager = shadowRoot.getElementById('pager');
 
     chapters.forEach(ch => {
         const section = document.createElement('section');
@@ -174,7 +174,6 @@ async function loadContent(chaptersJson, progressJson = "") {
 // Translates the pager to show `page` and notifies Android.
 // Also emits a progress update so Android can persist the new position.
 function goToPage(page, forceEmit = false) {
-    const pager = shadowRoot.getElementById('pager');
     if (!pager) return;
 
     const newPage  = Math.max(0, Math.min(page, totalPages - 1));
@@ -194,7 +193,6 @@ function goToPage(page, forceEmit = false) {
 
 // Navigates to the element with the given ID by computing its page index.
 function navigateToId(id) {
-    const pager = shadowRoot.getElementById('pager');
     const el    = shadowRoot.getElementById(id);
     if (!pager || !el) return;
 
@@ -214,7 +212,6 @@ function navigateToId(id) {
 // ─── Page count ──────────────────────────────────────────────────────────────
 
 function getTotalPages() {
-    const pager = shadowRoot.getElementById('pager');
     if (!pager) return 0;
 
     const colWidth    = getRealColumnWidth();
@@ -235,7 +232,6 @@ function calculateTotalPages() {
 function getRealColumnWidth() {
     if (cachedColumnWidth) return cachedColumnWidth;
 
-    const pager = shadowRoot.getElementById('pager');
     const width = pager.getBoundingClientRect().width;
 
     cachedColumnWidth = width > 0
@@ -254,7 +250,6 @@ function getRealColumnWidth() {
 // wrong when the pager is not at position 0. offsetLeft is always relative to
 // the un-transformed layout.
 function getNodeStartPage(node) {
-    const pager    = shadowRoot.getElementById('pager');
     const colWidth = getRealColumnWidth();
 
     let offset = 0;
@@ -298,7 +293,6 @@ let lastProgress = null;
 //   small font → node spans 2 pages, saved nodeOffset = 0.5 → page 1 of 2
 //   large font → node spans 4 pages, restored nodeOffset = 0.5 → page 2 of 4  ✓
 function emitProgress() {
-    const pager = shadowRoot.getElementById('pager');
     if (!pager) return;
 
     const sections = [...pager.querySelectorAll('section[id]')];
