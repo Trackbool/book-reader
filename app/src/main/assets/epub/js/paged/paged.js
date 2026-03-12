@@ -277,14 +277,11 @@ function getRealColumnWidth() {
 function getNodeStartPage(node) {
     const colWidth = getRealColumnWidth();
 
-    let offset = 0;
-    let el = node;
-    while (el && el !== pager) {
-        offset += el.offsetLeft;
-        el = el.offsetParent;
-    }
+    const pagerRect = pager.getBoundingClientRect();
+    const nodeRect  = node.getBoundingClientRect();
+    const absoluteOffset = nodeRect.left - pagerRect.left + currentPage * colWidth;
 
-    return Math.floor(offset / colWidth);
+    return Math.floor(absoluteOffset / colWidth);
 }
 
 // Returns the number of pages the node spans (minimum 1).
@@ -294,7 +291,8 @@ function getNodeStartPage(node) {
 // gives the page count; ceil counts a partial last page as a full page.
 function getNodePageCount(node) {
     const colWidth = getRealColumnWidth();
-    return Math.max(1, Math.ceil(node.offsetWidth / colWidth));
+    const width    = node.getBoundingClientRect().width;
+    return Math.max(1, Math.ceil(width / colWidth));
 }
 
 // ─── Progress — save ─────────────────────────────────────────────────────────
