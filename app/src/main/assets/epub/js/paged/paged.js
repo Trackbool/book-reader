@@ -43,6 +43,11 @@ let pager;
 // Cached column width. Invalidated on resize to avoid stale measurements.
 let cachedColumnWidth = null;
 
+// Cached section data built once after content loads. Each entry is:
+//   { id: string, el: HTMLElement, nodes: Element[] }
+// Avoids repeated querySelectorAll calls on the hot navigation path.
+let cachedSections = [];
+
 // 0-based index of the page currently shown.
 let currentPage = 0;
 
@@ -155,6 +160,7 @@ async function loadContent(chaptersJson, progressJson = "") {
     requestAnimationFrame(() => {
         requestAnimationFrame(() => {
             setTimeout(() => {
+                buildSectionCache();
                 calculateTotalPages();
 
                 if (progressJson) {
@@ -169,6 +175,16 @@ async function loadContent(chaptersJson, progressJson = "") {
             }, 50);
         });
     });
+}
+
+// Builds cachedSections from the live DOM. Called once after content loads
+// and again after a resize only if the section structure could have changed.
+function buildSectionCache() {
+    cachedSections = [...pager.querySelectorAll('section[id]')].map(section => ({
+        id: section.id,
+        el: section,
+        nodes: [...section.querySelectorAll(BLOCK_SELECTOR)]
+    }));
 }
 
 // ─── Page navigation ─────────────────────────────────────────────────────────
@@ -299,7 +315,7 @@ let lastProgress = null;
 function emitProgress() {
     if (!pager) return;
 
-    const sections = [...pager.querySelectorAll('section[id]')];
+    const sections = cachedSections;
 
     // Running best candidate: the node whose range most recently preceded
     // currentPage. Used as fallback when no node's range encloses it.
@@ -308,20 +324,17 @@ function emitProgress() {
     let anchorNodeOffset = 0;
 
     for (const section of sections) {
-        const nodes = [...section.querySelectorAll(BLOCK_SELECTOR)];
+        const nodes = section.nodes;
 
         for (let i = 0; i < nodes.length; i++) {
             const nodeStartPage = getNodeStartPage(nodes[i]);
 
-            // Nodes are in document (left-to-right) order; stop scanning once
-            // we've gone past the current page.
             if (nodeStartPage > currentPage) break;
 
             const nodePageCount = getNodePageCount(nodes[i]);
             const nodeEndPage   = nodeStartPage + nodePageCount - 1;
 
             if (currentPage <= nodeEndPage) {
-                // currentPage is inside this node's range — exact anchor found.
                 let nodeOffset = (currentPage - nodeStartPage) / nodePageCount;
                 nodeOffset = Math.max(0, Math.min(0.999999, nodeOffset));
 
@@ -329,19 +342,17 @@ function emitProgress() {
                 return;
             }
 
-            // Node ends before currentPage; keep as running candidate.
             anchorChapterId  = section.id;
             anchorNodeIndex  = i;
-            anchorNodeOffset = 0.999999; // conceptually at the trailing edge of a passed node
+            anchorNodeOffset = 0.999999;
         }
     }
 
     // Fallback: currentPage has no node starting or spanning it (blank gap).
     // Report the last node seen before currentPage.
     if (anchorChapterId) {
-        const section = shadowRoot.getElementById(anchorChapterId);
-        const nodes = section.querySelectorAll(BLOCK_SELECTOR);
-        const lastNode = nodes[anchorNodeIndex];
+        const section = cachedSections.find(s => s.id === anchorChapterId);
+        const lastNode = section.nodes[anchorNodeIndex];
 
         // Calculate actual offset even if it's >= 1
         const nodeStartPage = getNodeStartPage(lastNode);
@@ -375,7 +386,7 @@ function _reportProgress(chapterId, nodeIndex, nodeOffset) {
 // Both measurements are taken from the current DOM, so the result is correct
 // regardless of whether the font size has changed since progress was saved.
 function restoreProgress(chapterId, nodeIndex, nodeOffset = 0) {
-    const section = shadowRoot.getElementById(chapterId);
+    const section = cachedSections.find(s => s.id === chapterId);
 
     if (!section) {
         // Chapter no longer exists (book updated?); start from page 0.
@@ -383,7 +394,7 @@ function restoreProgress(chapterId, nodeIndex, nodeOffset = 0) {
         return;
     }
 
-    const nodes  = [...section.querySelectorAll(BLOCK_SELECTOR)];
+    const nodes  = section.nodes;
     const target = nodes[nodeIndex];
 
     if (!target) {
