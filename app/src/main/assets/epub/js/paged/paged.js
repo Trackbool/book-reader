@@ -154,17 +154,19 @@ async function loadContent(chaptersJson, progressJson = "") {
 
     requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-            calculateTotalPages();
-
-            if (progressJson) {
-                const { chapterId, nodeIndex, nodeOffset = 0 } = JSON.parse(progressJson);
-                restoreProgress(chapterId, nodeIndex, nodeOffset);
-            }
-
             setTimeout(() => {
-                shadowRoot.host.style.opacity = '1';
-                bridge.onContentReady();
-            }, 0);
+                calculateTotalPages();
+
+                if (progressJson) {
+                    const { chapterId, nodeIndex, nodeOffset = 0 } = JSON.parse(progressJson);
+                    restoreProgress(chapterId, nodeIndex, nodeOffset);
+                }
+
+                setTimeout(() => {
+                    shadowRoot.host.style.opacity = '1';
+                    bridge.onContentReady();
+                }, 0);
+            }, 50);
         });
     });
 }
