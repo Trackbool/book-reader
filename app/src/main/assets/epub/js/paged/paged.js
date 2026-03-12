@@ -217,12 +217,8 @@ function getTotalPages() {
     const pager = shadowRoot.getElementById('pager');
     if (!pager) return 0;
 
-    const savedTransform = pager.style.transform;
-    pager.style.transform = 'none';
-
     const colWidth    = getRealColumnWidth();
     const scrollWidth = pager.scrollWidth;
-    pager.style.transform = savedTransform;
     cachedColumnWidth = colWidth;
 
     const EPS = 0.5;
@@ -240,11 +236,7 @@ function getRealColumnWidth() {
     if (cachedColumnWidth) return cachedColumnWidth;
 
     const pager = shadowRoot.getElementById('pager');
-    const currentTransform = pager.style.transform;
-    pager.style.transform = 'none';
-
     const width = pager.getBoundingClientRect().width;
-    pager.style.transform = currentTransform;
 
     cachedColumnWidth = width > 0
         ? width
