@@ -64,26 +64,15 @@ function initShadow() {
     pager.id = 'pager';
     shadowRoot.appendChild(pager);
 
-    function updateSizes() {
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        shadowRoot.host.style.setProperty('--vw', `${w}px`);
-        shadowRoot.host.style.setProperty('--vh', `${h}px`);
-    }
-
-    updateSizes();
-
-    // Debounced to avoid recalculating layout tens of times per second during
-    // rotation or font-size changes.
-    let resizeTimer;
-    window.addEventListener('resize', () => {
-        cachedColumnWidth = null;
-        updateSizes();
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(recalculateAfterResize, 150);
-    });
-
+    _updateSizes();
     initSwipeGesture();
+}
+
+function _updateSizes() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    shadowRoot.host.style.setProperty('--vw', `${w}px`);
+    shadowRoot.host.style.setProperty('--vh', `${h}px`);
 }
 
 function initSwipeGesture() {
@@ -431,11 +420,15 @@ function restoreProgress(chapterId, nodeIndex, nodeOffset = 0) {
 }
 
 // ─── Resize recovery ─────────────────────────────────────────────────────────
+function onResize() {
+    _updateSizes();
+    _recalculateAfterResize();
+}
 
 // Called on every resize. currentPage is meaningless after a reflow because
 // the column count changes, so we re-derive the correct page from the cached
 // node anchor instead.
-function recalculateAfterResize() {
+function _recalculateAfterResize() {
     cachedColumnWidth = null;
     buildSectionCache();
     calculateTotalPages();
