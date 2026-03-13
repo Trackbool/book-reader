@@ -78,8 +78,8 @@ fun BookCard(
                             .aspectRatio(2f / 3f)
                     )
 
-                    FileTypeTag(
-                        fileType = book.fileType,
+                    BookProgressTag(
+                        book.progressPercent,
                         modifier = Modifier
                             .padding(horizontal = 2.dp, vertical = 2.dp)
                             .align(Alignment.BottomEnd)
@@ -225,20 +225,18 @@ private fun BookInfo(
 }
 
 @Composable
-private fun FileTypeTag(fileType: BookFileType, modifier: Modifier) {
-    if (fileType != BookFileType.NONE) {
-        Surface(
-            shape = RoundedCornerShape(4.dp),
-            color = MaterialTheme.colorScheme.primaryContainer,
-            modifier = modifier.alpha(0.95f)
-        ) {
-            Text(
-                text = fileType.name,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-            )
-        }
+private fun BookProgressTag(progressPercentage: Int, modifier: Modifier) {
+    Surface(
+        shape = RoundedCornerShape(4.dp),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        modifier = modifier.alpha(0.95f)
+    ) {
+        Text(
+            text = "$progressPercentage%",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+        )
     }
 }
 
