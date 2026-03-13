@@ -81,7 +81,7 @@ fun BookCard(
                         book.progressPercent,
                         modifier = Modifier
                             .padding(horizontal = 2.dp, vertical = 2.dp)
-                            .align(Alignment.BottomEnd)
+                            .align(Alignment.TopStart)
                     )
                 }
 
@@ -165,14 +165,14 @@ private fun BookCoverImage(
             placeholder = painterResource(R.drawable.book_placeholder),
             error = painterResource(R.drawable.book_placeholder),
             contentScale = ContentScale.Crop,
-            modifier = modifier.clip(RoundedCornerShape(8.dp))
+            modifier = modifier
         )
     } else {
         Image(
             painter = painterResource(R.drawable.book_placeholder),
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            modifier = modifier.clip(RoundedCornerShape(8.dp))
+            modifier = modifier
         )
     }
 }
