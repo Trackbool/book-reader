@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import android.net.Uri
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.text.font.FontWeight
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.trackbool.bookreader.R
@@ -43,6 +44,7 @@ fun BookCard(
     modifier: Modifier = Modifier
 ) {
     Card(
+        shape = RoundedCornerShape(3.dp),
         modifier = modifier
             .combinedClickable(
                 onClick = {
@@ -54,7 +56,7 @@ fun BookCard(
                 },
                 onLongClick = onLongClick
             ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = if (isSelected) {
             CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
         } else {
@@ -62,10 +64,7 @@ fun BookCard(
         }
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(8.dp)
-            ) {
+            Column {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -91,7 +90,7 @@ fun BookCard(
                 BookInfo(
                     title = book.title,
                     author = book.author,
-                    modifier = Modifier
+                    modifier = Modifier.padding(8.dp)
                 )
             }
 
@@ -201,12 +200,13 @@ private fun BookInfo(
 ) {
     Column(
         modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontWeight = FontWeight.SemiBold
+            ),
             minLines = 2,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
