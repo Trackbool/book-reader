@@ -285,20 +285,12 @@ function _setupChapterObserver() {
     sections.forEach(s => observer.observe(s));
 }
 
-function _debounce(fn, delay) {
-    let timer;
-    return (...args) => {
-        clearTimeout(timer);
-        timer = setTimeout(() => fn(...args), delay);
-    };
-}
-
 // Attaches the scroll listener. The 300 ms debounce avoids flooding the bridge
 // while the user is actively scrolling, without introducing a noticeable delay
 // in the progress update once they stop.
 // { passive: true } tells the browser we will never call preventDefault(),
 // allowing it to optimise scroll performance on the compositor thread.
 function _setupScrollTracking() {
-    const emitDebounced = _debounce(_emitProgress, 300);
+    const emitDebounced = debounce(_emitProgress, 300);
     window.addEventListener('scroll', emitDebounced, { passive: true });
 }
