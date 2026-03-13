@@ -61,13 +61,17 @@ fun BookReaderScreen(
                         Column(modifier = Modifier.padding(start = 8.dp)) {
                             Text(
                                 text = book.title,
-                                style = if (isTitleOnly) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium
+                                style = if (isTitleOnly) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                             if (!isTitleOnly) {
                                 Text(
                                     text = currentChapter?.title ?: "",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
