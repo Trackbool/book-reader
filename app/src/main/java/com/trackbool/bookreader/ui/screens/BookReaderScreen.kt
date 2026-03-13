@@ -154,14 +154,18 @@ fun BookProgress(
     currentPage: Int,
     totalPages: Int,
     readerMode: ReaderMode,
-    modifier: Modifier = Modifier) {
-    val progressText = if (readerMode == ReaderMode.PAGED)
-        "$currentPage/$totalPages - ${book.progressPercent}%" else "${book.progressPercent}%"
+    modifier: Modifier = Modifier
+) {
+    val progressText = when {
+        totalPages == 0 -> stringResource(R.string.preparing_your_reading)
+        readerMode == ReaderMode.PAGED -> "$currentPage / $totalPages • ${book.progressPercent}%"
+        else -> "${book.progressPercent}%"
+    }
 
     Text(
         text = progressText,
-        style = MaterialTheme.typography.bodySmall,
+        style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier,
+        modifier = modifier
     )
 }

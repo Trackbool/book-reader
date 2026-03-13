@@ -32,4 +32,5 @@
     <string name="error_delete_book">Error al eliminar el libro</string>
     <string name="error_delete_book_plural">Error al eliminar %1$d libros</string>
     <string name="reader_error_loading_content">No se pudo cargar el contenido</string>
+    <string name="preparing_your_reading">Preparando lectura...</string>
 </resources>
