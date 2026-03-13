@@ -142,7 +142,7 @@ fun BookReaderScreen(
                 readerMode = readerMode,
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
-                    .padding(vertical = 4.dp)
+                    .padding(vertical = 8.dp)
             )
         }
     }
