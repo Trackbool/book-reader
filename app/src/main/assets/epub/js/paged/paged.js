@@ -130,8 +130,9 @@ function navigateToId(id) {
     const el = shadowRoot.getElementById(id);
     if (!pager || !el) return;
 
-    const colWidth = _getRealColumnWidth();
+    pager.style.transition = 'none';
 
+    const colWidth = _getRealColumnWidth();
     const pagerRect = pager.getBoundingClientRect();
     const elRect = el.getBoundingClientRect();
 
