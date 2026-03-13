@@ -1,5 +1,6 @@
 package com.trackbool.bookreader.ui.screens
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -53,22 +54,23 @@ fun BookReaderScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column(
-                        modifier = Modifier.padding(start = 8.dp)
-                    ) {
-                        Text(
-                            text = book.title,
-                            style = MaterialTheme.typography.titleMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = currentChapter?.title.orEmpty(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                    AnimatedContent(
+                        targetState = currentChapter?.title.isNullOrBlank(),
+                        label = "HeaderTransition"
+                    ) { isTitleOnly ->
+                        Column(modifier = Modifier.padding(start = 8.dp)) {
+                            Text(
+                                text = book.title,
+                                style = if (isTitleOnly) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium
+                            )
+                            if (!isTitleOnly) {
+                                Text(
+                                    text = currentChapter?.title ?: "",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
                     }
                 },
                 navigationIcon = {
