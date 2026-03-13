@@ -49,7 +49,113 @@ let currentPage = 0;
 // Total number of CSS-column pages. Calculated after layout is stable.
 let totalPages = 0;
 
+// Stores the last emitted progress so resize can restore from it without
+// re-searching the DOM.
+let lastProgress = null;
+
 // ─── Initialisation ──────────────────────────────────────────────────────────
+
+function init() {
+    _initShadow();
+    setupNavigationHandler(shadowRoot);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+
+// ─── Content loading ─────────────────────────────────────────────────────────
+
+// Entry point called by Android once the WebView has finished loading the
+// reader HTML. Injects all chapters, waits for assets, then either restores
+// a previous reading position or starts from page 0.
+//
+// chaptersJson — JSON array of { id: string, html: string (base64) }
+// progressJson — optional JSON object { chapterId, nodeIndex, nodeOffset }
+async function loadContent(chaptersJson, progressJson = "") {
+    const chapters = JSON.parse(chaptersJson);
+
+    chapters.forEach(ch => {
+        const section = document.createElement('section');
+        section.id = ch.id;
+        section.innerHTML = decodeB64(ch.html);
+        pager.appendChild(section);
+    });
+
+    cachedColumnWidth = null;
+    await waitForImagesAndFonts(shadowRoot);
+
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                _buildSectionCache();
+                calculateTotalPages();
+
+                if (progressJson) {
+                    const { chapterId, nodeIndex, nodeOffset = 0 } = JSON.parse(progressJson);
+                    _restoreProgress(chapterId, nodeIndex, nodeOffset);
+                }
+
+                setTimeout(() => {
+                    shadowRoot.host.style.opacity = '1';
+                    bridge.onContentReady();
+                }, 0);
+            }, 50);
+        });
+    });
+}
+
+// ─── Page navigation ─────────────────────────────────────────────────────────
+
+// Translates the pager to show `page` and notifies Android.
+// Also emits a progress update so Android can persist the new position.
+function goToPage(page, forceEmit = false) {
+    if (!pager) return;
+
+    const newPage  = Math.max(0, Math.min(page, totalPages - 1));
+    const colWidth = _getRealColumnWidth();
+    pager.style.transform = `translateX(${-newPage * colWidth}px)`;
+
+    const pageChanged = newPage !== currentPage;
+    currentPage = newPage;
+
+    if (pageChanged) {
+        bridge.onPageChanged(currentPage + 1, totalPages);
+        _emitProgress();
+    } else if (forceEmit) {
+        _emitProgress();
+    }
+}
+
+// Navigates to the element with the given ID by computing its page index.
+function navigateToId(id) {
+    const el = shadowRoot.getElementById(id);
+    if (!pager || !el) return;
+
+    const colWidth = _getRealColumnWidth();
+
+    const pagerRect = pager.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+
+    const relativeOffset = elRect.left - pagerRect.left;
+
+    const page = Math.floor((relativeOffset + 2) / colWidth);
+    goToPage(page);
+}
+
+// ─── Page count ──────────────────────────────────────────────────────────────
+
+function calculateTotalPages() {
+    totalPages = _getTotalPages();
+    bridge.onPagesCalculated(totalPages);
+}
+
+// ─── Resize recovery ─────────────────────────────────────────────────────────
+
+function onResize() {
+    _updateSizes();
+    _recalculateAfterResize();
+}
+
+// ─── Private methods ─────────────────────────────────────────────────────────
 
 function _initShadow() {
     const host = document.getElementById('content');
@@ -124,47 +230,6 @@ function _initSwipeGesture() {
     }, { passive: true });
 }
 
-// ─── Content loading ─────────────────────────────────────────────────────────
-
-// Entry point called by Android once the WebView has finished loading the
-// reader HTML. Injects all chapters, waits for assets, then either restores
-// a previous reading position or starts from page 0.
-//
-// chaptersJson — JSON array of { id: string, html: string (base64) }
-// progressJson — optional JSON object { chapterId, nodeIndex, nodeOffset }
-async function loadContent(chaptersJson, progressJson = "") {
-    const chapters = JSON.parse(chaptersJson);
-
-    chapters.forEach(ch => {
-        const section = document.createElement('section');
-        section.id = ch.id;
-        section.innerHTML = decodeB64(ch.html);
-        pager.appendChild(section);
-    });
-
-    cachedColumnWidth = null;
-    await waitForImagesAndFonts(shadowRoot);
-
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            setTimeout(() => {
-                _buildSectionCache();
-                calculateTotalPages();
-
-                if (progressJson) {
-                    const { chapterId, nodeIndex, nodeOffset = 0 } = JSON.parse(progressJson);
-                    _restoreProgress(chapterId, nodeIndex, nodeOffset);
-                }
-
-                setTimeout(() => {
-                    shadowRoot.host.style.opacity = '1';
-                    bridge.onContentReady();
-                }, 0);
-            }, 50);
-        });
-    });
-}
-
 // Builds cachedSections from the live DOM. Called once after content loads
 // and again after a resize only if the section structure could have changed.
 // Node geometry (startPage, pageCount, endPage) is computed here once and
@@ -181,46 +246,6 @@ function _buildSectionCache() {
     }));
 }
 
-// ─── Page navigation ─────────────────────────────────────────────────────────
-
-// Translates the pager to show `page` and notifies Android.
-// Also emits a progress update so Android can persist the new position.
-function goToPage(page, forceEmit = false) {
-    if (!pager) return;
-
-    const newPage  = Math.max(0, Math.min(page, totalPages - 1));
-    const colWidth = _getRealColumnWidth();
-    pager.style.transform = `translateX(${-newPage * colWidth}px)`;
-
-    const pageChanged = newPage !== currentPage;
-    currentPage = newPage;
-
-    if (pageChanged) {
-        bridge.onPageChanged(currentPage + 1, totalPages);
-        _emitProgress();
-    } else if (forceEmit) {
-        _emitProgress();
-    }
-}
-
-// Navigates to the element with the given ID by computing its page index.
-function navigateToId(id) {
-    const el = shadowRoot.getElementById(id);
-    if (!pager || !el) return;
-
-    const colWidth = _getRealColumnWidth();
-
-    const pagerRect = pager.getBoundingClientRect();
-    const elRect = el.getBoundingClientRect();
-
-    const relativeOffset = elRect.left - pagerRect.left;
-
-    const page = Math.floor((relativeOffset + 2) / colWidth);
-    goToPage(page);
-}
-
-// ─── Page count ──────────────────────────────────────────────────────────────
-
 function _getTotalPages() {
     if (!pager || !pager.firstElementChild) return 0;
 
@@ -234,11 +259,6 @@ function _getTotalPages() {
     const total = Math.ceil((preciseFullWidth - 0.1) / colWidth);
 
     return Math.max(1, total);
-}
-
-function calculateTotalPages() {
-    totalPages = _getTotalPages();
-    bridge.onPagesCalculated(totalPages);
 }
 
 // ─── Column width helper ──────────────────────────────────────────────────────
@@ -284,10 +304,6 @@ function _getNodePageCount(node) {
 }
 
 // ─── Progress — save ─────────────────────────────────────────────────────────
-
-// Stores the last emitted progress so resize can restore from it without
-// re-searching the DOM.
-let lastProgress = null;
 
 // Finds the anchor node for `currentPage` and reports progress to Android.
 //
@@ -418,12 +434,6 @@ function _restoreProgress(chapterId, nodeIndex, nodeOffset = 0) {
     goToPage(Math.min(targetPage, totalPages - 1), true);
 }
 
-// ─── Resize recovery ─────────────────────────────────────────────────────────
-function onResize() {
-    _updateSizes();
-    _recalculateAfterResize();
-}
-
 // Called on every resize. currentPage is meaningless after a reflow because
 // the column count changes, so we re-derive the correct page from the cached
 // node anchor instead.
@@ -439,12 +449,3 @@ function _recalculateAfterResize() {
         goToPage(Math.min(currentPage, totalPages - 1));
     }
 }
-
-// ─── Entry point ─────────────────────────────────────────────────────────────
-
-function init() {
-    _initShadow();
-    setupNavigationHandler(shadowRoot);
-}
-
-document.addEventListener('DOMContentLoaded', init);
