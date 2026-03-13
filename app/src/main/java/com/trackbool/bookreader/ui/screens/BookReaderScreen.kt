@@ -2,8 +2,8 @@ package com.trackbool.bookreader.ui.screens
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -18,7 +18,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -64,7 +63,8 @@ fun BookReaderScreen(
                         )
                         Text(
                             text = currentChapter?.title.orEmpty(),
-                            style = MaterialTheme.typography.titleSmall,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -78,16 +78,6 @@ fun BookReaderScreen(
                         )
                     }
                 },
-                actions = {
-                    if (!isLoading) {
-                        BookProgress(
-                            book = book,
-                            currentPage = currentPage,
-                            totalPages = totalPages,
-                            readerMode = readerMode,
-                        )
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -95,61 +85,83 @@ fun BookReaderScreen(
                 ),
             )
         },
-        modifier = modifier,
+        modifier = modifier.fillMaxSize(),
     ) { paddingValues ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
+                .padding(paddingValues)
         ) {
-            when {
-                hasError || (!isLoading && chapters.isEmpty()) -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(stringResource(R.string.reader_error_loading_content))
-                    }
-                }
-
-                chapters.isNotEmpty() -> {
-                    when (readerMode) {
-                        ReaderMode.SCROLL -> BookScrollContent(
-                            book = book,
-                            chapters = chapters,
-                            onContentReady = onContentReady,
-                            onProgressChanged =  onProgressChanged,
-                            modifier = Modifier.fillMaxSize()
-                        )
-
-                        ReaderMode.PAGED -> BookPagedContent(
-                            book = book,
-                            chapters = chapters,
-                            onContentReady = onContentReady,
-                            onCurrentPageChanged = onCurrentPageChanged,
-                            onTotalPagesCalculated = onTotalPagesCalculated,
-                            onProgressChanged =  onProgressChanged,
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+            ) {
+                when {
+                    hasError || (!isLoading && chapters.isEmpty()) -> {
+                        Box(
                             modifier = Modifier.fillMaxSize(),
-                        )
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(stringResource(R.string.reader_error_loading_content))
+                        }
                     }
+
+                    chapters.isNotEmpty() -> {
+                        when (readerMode) {
+                            ReaderMode.SCROLL -> BookScrollContent(
+                                book = book,
+                                chapters = chapters,
+                                onContentReady = onContentReady,
+                                onProgressChanged = onProgressChanged,
+                                modifier = Modifier.fillMaxSize()
+                            )
+
+                            ReaderMode.PAGED -> BookPagedContent(
+                                book = book,
+                                chapters = chapters,
+                                onContentReady = onContentReady,
+                                onCurrentPageChanged = onCurrentPageChanged,
+                                onTotalPagesCalculated = onTotalPagesCalculated,
+                                onProgressChanged = onProgressChanged,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+                    }
+                }
+
+                if (isLoading) {
+                    LoadingIndicator(modifier = Modifier.fillMaxSize())
                 }
             }
 
-            if (isLoading) {
-                LoadingIndicator(modifier = Modifier.fillMaxSize())
-            }
+            BookProgress(
+                book = book,
+                currentPage = currentPage,
+                totalPages = totalPages,
+                readerMode = readerMode,
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(vertical = 4.dp)
+            )
         }
     }
 }
 
 @Composable
-fun BookProgress(book: Book, currentPage: Int, totalPages: Int, readerMode: ReaderMode) {
+fun BookProgress(
+    book: Book,
+    currentPage: Int,
+    totalPages: Int,
+    readerMode: ReaderMode,
+    modifier: Modifier = Modifier) {
     val progressText = if (readerMode == ReaderMode.PAGED)
         "$currentPage/$totalPages - ${book.progressPercent}%" else "${book.progressPercent}%"
 
     Text(
         text = progressText,
-        style = MaterialTheme.typography.bodyMedium,
-        modifier = Modifier.padding(end = 16.dp),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier,
     )
 }
