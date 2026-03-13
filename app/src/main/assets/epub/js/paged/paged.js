@@ -107,21 +107,16 @@ async function loadContent(chaptersJson, progressJson = "") {
 
 // Translates the pager to show `page` and notifies Android.
 // Also emits a progress update so Android can persist the new position.
-function goToPage(page, forceEmit = false) {
+function goToPage(page, forceEmit = false, animate = true) {
     if (!pager) return;
 
     const newPage  = Math.max(0, Math.min(page, totalPages - 1));
     const colWidth = _getRealColumnWidth();
 
     const pageDifference = Math.abs(newPage - currentPage);
-    const shouldAnimate = pageDifference <= 2;
+    const shouldAnimate = animate && (pageDifference <= 2);
 
-    if (shouldAnimate) {
-        pager.style.transition = 'transform .3s ease';
-    } else {
-        pager.style.transition = 'none';
-    }
-
+    pager.style.transition = shouldAnimate ? 'transform .3s ease' : 'none';
     pager.style.transform = `translateX(${-newPage * colWidth}px)`;
 
     const pageChanged = newPage !== currentPage;
@@ -440,7 +435,7 @@ function _restoreProgress(chapterId, nodeIndex, nodeOffset = 0) {
 
     const targetPage = nodeStartPage + pageIndexWithinNode;
 
-    goToPage(Math.min(targetPage, totalPages - 1), true);
+    goToPage(Math.min(targetPage, totalPages - 1), true, false);
 }
 
 // Called on every resize. currentPage is meaningless after a reflow because
