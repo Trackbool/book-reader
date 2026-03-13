@@ -112,6 +112,16 @@ function goToPage(page, forceEmit = false) {
 
     const newPage  = Math.max(0, Math.min(page, totalPages - 1));
     const colWidth = _getRealColumnWidth();
+
+    const pageDifference = Math.abs(newPage - currentPage);
+    const shouldAnimate = pageDifference <= 2;
+
+    if (shouldAnimate) {
+        pager.style.transition = 'transform .3s ease';
+    } else {
+        pager.style.transition = 'none';
+    }
+
     pager.style.transform = `translateX(${-newPage * colWidth}px)`;
 
     const pageChanged = newPage !== currentPage;
@@ -129,8 +139,6 @@ function goToPage(page, forceEmit = false) {
 function navigateToId(id) {
     const el = shadowRoot.getElementById(id);
     if (!pager || !el) return;
-
-    pager.style.transition = 'none';
 
     const colWidth = _getRealColumnWidth();
     const pagerRect = pager.getBoundingClientRect();
