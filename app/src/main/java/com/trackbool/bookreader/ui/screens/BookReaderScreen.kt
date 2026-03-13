@@ -165,7 +165,7 @@ fun BookProgress(
     Text(
         text = progressText,
         style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
         modifier = modifier
     )
 }
