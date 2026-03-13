@@ -64,15 +64,17 @@ fun AppNavGraph(
             val viewModel: BookReaderViewModel = hiltViewModel()
             val book by viewModel.book.collectAsState()
             val chapters by viewModel.chapters.collectAsState()
+            val currentChapter by viewModel.currentChapter.collectAsState()
             val isLoading by viewModel.isLoading.collectAsState()
             val hasError by viewModel.hasError.collectAsState()
             val currentPage by viewModel.currentPage.collectAsState()
             val totalPages by viewModel.totalPages.collectAsState()
 
-            book?.let {
+            book?.let { b ->
                 BookReaderScreen(
-                    book = it,
+                    book = b,
                     chapters = chapters,
+                    currentChapter = currentChapter,
                     isLoading = isLoading,
                     hasError = hasError,
                     currentPage = currentPage,

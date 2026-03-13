@@ -16,5 +16,6 @@ data class BookEntity(
     val filePath: String = "",
     val fileType: String = "NONE",
     val fileName: String = "",
+    val currentChapterId: String? = null,
     val documentPositionData: String = ""
 )

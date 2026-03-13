@@ -1,6 +1,8 @@
 package com.trackbool.bookreader.ui.screens
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -18,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.trackbool.bookreader.R
 import com.trackbool.bookreader.domain.model.Book
@@ -32,6 +35,7 @@ import com.trackbool.bookreader.ui.model.ReaderMode
 fun BookReaderScreen(
     book: Book,
     chapters: List<ChapterView>,
+    currentChapter: ChapterView?,
     isLoading: Boolean,
     hasError: Boolean,
     currentPage: Int,
@@ -40,7 +44,7 @@ fun BookReaderScreen(
     onCurrentPageChanged: (Int) -> Unit,
     onTotalPagesCalculated: (Int) -> Unit,
     onContentReady: () -> Unit,
-    onProgressChanged: (Float, String) -> Unit,
+    onProgressChanged: (Float, String, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val readerMode = ReaderMode.PAGED
@@ -49,11 +53,22 @@ fun BookReaderScreen(
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
-                    Text(
-                        text = book.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = book.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = currentChapter?.title.orEmpty(),
+                            style = MaterialTheme.typography.titleSmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

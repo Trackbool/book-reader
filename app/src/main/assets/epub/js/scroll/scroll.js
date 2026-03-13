@@ -198,6 +198,7 @@ function _emitProgress() {
 
     bridge.onProgressChanged(
         _getGlobalProgress(),
+        currentChapterId,
         JSON.stringify({ chapterId: currentChapterId, nodeIndex, nodeOffset })
     );
 }

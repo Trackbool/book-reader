@@ -68,6 +68,7 @@ class BookRepositoryImpl(private val bookDao: BookDao) : BookRepository {
         filePath = filePath,
         fileType = fileType.name,
         fileName = fileName,
+        currentChapterId = currentChapterId,
         documentPositionData = documentPositionData
     )
 
@@ -82,6 +83,7 @@ class BookRepositoryImpl(private val bookDao: BookDao) : BookRepository {
         filePath = filePath,
         fileType = try { BookFileType.valueOf(fileType) } catch (e: Exception) { BookFileType.NONE },
         fileName = fileName,
+        currentChapterId = currentChapterId,
         documentPositionData = documentPositionData
     )
 }

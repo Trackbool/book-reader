@@ -12,7 +12,7 @@ fun BookScrollContent(
     book: Book,
     chapters: List<ChapterView>,
     onContentReady: () -> Unit,
-    onProgressChanged: (Float, String) -> Unit,
+    onProgressChanged: (Float, String, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (book.fileType) {

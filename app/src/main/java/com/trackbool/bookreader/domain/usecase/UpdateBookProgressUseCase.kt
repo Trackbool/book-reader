@@ -7,12 +7,14 @@ class UpdateBookProgressUseCase(private val repository: BookRepository) {
     suspend operator fun invoke(
         book: Book,
         readingProgress: Float,
+        currentChapterId: String? = null,
         documentPositionData: String = ""
     ): Result<Book> {
         val isCompleted = readingProgress >= 1f
         val updatedBook = book.copy(
             readingProgress = readingProgress,
             isCompleted = isCompleted,
+            currentChapterId = currentChapterId ?: book.currentChapterId,
             documentPositionData = documentPositionData
         )
         return repository.updateBook(updatedBook)

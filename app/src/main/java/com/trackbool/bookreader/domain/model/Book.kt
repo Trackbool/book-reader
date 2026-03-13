@@ -49,6 +49,7 @@ data class Book(
     val filePath: String = "",
     val fileType: BookFileType = BookFileType.NONE,
     val fileName: String = "",
+    val currentChapterId: String? = null,
     val documentPositionData: String = ""
 ) {
     val progressPercent: Int

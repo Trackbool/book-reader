@@ -383,10 +383,10 @@ function _reportProgress(chapterId, nodeIndex, nodeOffset) {
         ? currentPage / (totalPages - 1)
         : (currentPage > 0 ? 1 : 0);
 
-    const progressJson = JSON.stringify({ chapterId, nodeIndex, nodeOffset });
+    const documentPositionData = JSON.stringify({ chapterId, nodeIndex, nodeOffset });
 
     lastProgress = { chapterId, nodeIndex, nodeOffset };
-    bridge.onProgressChanged(globalProgress, progressJson);
+    bridge.onProgressChanged(globalProgress, chapterId, documentPositionData);
 }
 
 // ─── Progress — restore ──────────────────────────────────────────────────────

@@ -37,6 +37,9 @@ class BookReaderViewModel @Inject constructor(
     private val _chapters = MutableStateFlow<List<ChapterView>>(emptyList())
     val chapters: StateFlow<List<ChapterView>> = _chapters.asStateFlow()
 
+    private val _currentChapter = MutableStateFlow<ChapterView?>(null)
+    val currentChapter: StateFlow<ChapterView?> = _currentChapter.asStateFlow()
+
     private val _hasError = MutableStateFlow(false)
     val hasError: StateFlow<Boolean> = _hasError.asStateFlow()
 
@@ -87,11 +90,17 @@ class BookReaderViewModel @Inject constructor(
 
         _chapters.value = chapters
 
-        if (chapters.isEmpty()) {
-            _hasError.value = true
+        if (chapters.isNotEmpty()) {
+            val initialChapterId = book.currentChapterId
+            _currentChapter.value = if (initialChapterId != null) {
+                chapters.find { it.id == initialChapterId } ?: chapters.first()
+            } else {
+                chapters.first()
+            }
+            _isLoadingRender.value = true
             _isLoadingData.value = false
         } else {
-            _isLoadingRender.value = true
+            _hasError.value = true
             _isLoadingData.value = false
         }
     }
@@ -108,17 +117,25 @@ class BookReaderViewModel @Inject constructor(
         _totalPages.value = total
     }
 
-    fun onProgressChanged(readingProgress: Float, documentPositionData: String) {
-        updateProgress(readingProgress, documentPositionData)
+    fun onProgressChanged(readingProgress: Float, chapterId: String, documentPositionData: String) {
+        onChapterChanged(chapterId)
+        updateProgress(readingProgress, chapterId, documentPositionData)
     }
 
-    private fun updateProgress(readingProgress: Float, documentPositionData: String) {
+    fun onChapterChanged(chapterId: String) {
+        if (chapterId.isNotEmpty()) {
+            _currentChapter.value = _chapters.value.find { it.id == chapterId }
+        }
+    }
+
+    private fun updateProgress(readingProgress: Float, chapterId: String, documentPositionData: String) {
         val book = _book.value ?: return
 
         viewModelScope.launch {
             val result = updateBookProgressUseCase(
                 book = book,
                 readingProgress = readingProgress,
+                currentChapterId = chapterId.ifEmpty { null },
                 documentPositionData = documentPositionData
             )
             result.onSuccess {
