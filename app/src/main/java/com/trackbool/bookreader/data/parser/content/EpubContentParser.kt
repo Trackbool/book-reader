@@ -66,6 +66,11 @@ class EpubContentParser : BookContentParser {
      *
      * All internal <a href> links are rewritten to plain #id anchors at parse time,
      * so no URI resolution is needed at navigation time.
+     *
+     * Chapter titles are resolved in priority order:
+     *   1. EPUB 3 nav.xhtml (canonical)
+     *   2. EPUB 2 toc.ncx (canonical)
+     *   3. <title>, <h1>, <h2> from chapter HTML (fallback for malformed EPUBs)
      */
     private fun parseChapters(
         opfDirectory: String,
@@ -80,19 +85,26 @@ class EpubContentParser : BookContentParser {
         // Map of OPF-relative href → manifestId, used to resolve cross-chapter navigation links.
         // e.g. "xhtml/chapter1.xhtml" → "c001"
         val hrefToManifestId: Map<String, String> = manifest.values
-            .associate { item -> item.attr("href") to item.id() }
+            .associate { item ->
+                val normalized = normalizePath(resolvePath(opfDirectory, item.attr("href")))
+                normalized to item.id()
+            }
+
+        // Map of OPF-relative href → chapter title, extracted from the nav/NCX document.
+        // This is the canonical source for chapter titles per the EPUB spec.
+        val titlesByHref: Map<String, String> = extractTitlesFromNav(opfDirectory, opfContent, zip)
 
         return spine.mapIndexedNotNull { index, itemref ->
             val idref = itemref.attr("idref")
             val item = manifest[idref] ?: return@mapIndexedNotNull null
             val href = item.attr("href")
-            val chapterPath = resolvePath(opfDirectory, href)
+            val chapterPath = normalizePath(resolvePath(opfDirectory, href))
             val rawContent = zip.readEpubEntryAsString(chapterPath) ?: ""
             val chapterDir = chapterPath.substringBeforeLast("/", "")
 
             Chapter(
                 metadata = ChapterMetadata(
-                    title = extractChapterTitle(rawContent),
+                    title = titlesByHref[chapterPath] ?: extractChapterTitle(rawContent),
                     id = idref,
                     chapterIndex = index
                 ),
@@ -108,16 +120,105 @@ class EpubContentParser : BookContentParser {
         }
     }
 
+    // ── Navigation title extraction ───────────────────────────────────────────
+
     /**
-     * Rewrites all URLs and ids in the chapter HTML, in order:
+     * Extracts chapter titles from the EPUB navigation document.
      *
-     *   1. rewriteResourceUrls    — asset refs (img/link/script/…) → epub:// scheme
-     *   2. prefixInternalIds      — all [id] attributes → manifestId__id
-     *   3. rewriteNavigationLinks — <a href> internal links → #manifestId or #manifestId__fragment
+     * Resolution order:
+     *   1. EPUB 3: manifest item with properties="nav" → nav.xhtml <nav epub:type="toc">
+     *   2. EPUB 2: manifest item with media-type="application/x-dtbncx+xml" → toc.ncx
      *
-     * Order matters: prefixInternalIds must run before rewriteNavigationLinks so that
-     * local anchor links (#fragment) are rewritten consistently with the already-prefixed ids.
+     * Returns a map of OPF-relative href (without fragment) → title string.
+     * Returns an empty map if neither navigation document is found or parseable.
      */
+    private fun extractTitlesFromNav(
+        opfDirectory: String,
+        opfContent: String,
+        zip: ZipFile
+    ): Map<String, String> {
+        val doc = Jsoup.parse(opfContent, "", Parser.xmlParser())
+
+        // EPUB 3: item with properties="nav"
+        val navItem = doc.selectFirst("manifest item[properties~=nav]")
+        if (navItem != null) {
+            val navPath = resolvePath(opfDirectory, navItem.attr("href"))
+            val navContent = zip.readEpubEntryAsString(navPath)
+            if (navContent != null) return parseEpub3Nav(navContent, navPath)
+        }
+
+        // EPUB 2: NCX file
+        val ncxItem = doc.selectFirst("manifest item[media-type=application/x-dtbncx+xml]")
+        if (ncxItem != null) {
+            val ncxPath = resolvePath(opfDirectory, ncxItem.attr("href"))
+            val ncxContent = zip.readEpubEntryAsString(ncxPath)
+            if (ncxContent != null) return parseNcx(ncxContent, ncxPath)
+        }
+
+        return emptyMap()
+    }
+
+    /**
+     * Parses an EPUB 3 nav.xhtml document and extracts the TOC link map.
+     *
+     *   <nav epub:type="toc">
+     *     <ol>
+     *       <li><a href="chapter1.xhtml">Chapter 1</a></li>
+     *       <li><a href="chapter2.xhtml#start">Chapter 2</a></li>
+     *     </ol>
+     *   </nav>
+     *
+     * Fragment identifiers are stripped from hrefs so the map keys align
+     * with the OPF manifest href values used in [parseChapters].
+     */
+    private fun parseEpub3Nav(
+        navContent: String,
+        navPath: String
+    ): Map<String, String> {
+        val navDir = navPath.substringBeforeLast("/", "")
+        val doc = Jsoup.parse(navContent)
+        val navEl = doc.selectFirst("nav[epub:type=toc]")
+            ?: doc.selectFirst("nav[epub|type=toc]")
+            ?: doc.selectFirst("nav")
+        return navEl?.select("a")
+            ?.filter { it.text().isNotBlank() }
+            ?.associate { anchor ->
+                val rawHref = anchor.attr("href").substringBefore('#')
+                val absoluteHref = normalizePath(resolvePath(navDir, rawHref))
+                absoluteHref to anchor.text()
+            } ?: emptyMap()
+    }
+
+    /**
+     * Parses an EPUB 2 toc.ncx document and extracts the TOC link map.
+     *
+     *   <navPoint id="chapter1" playOrder="1">
+     *     <navLabel><text>Chapter 1</text></navLabel>
+     *     <content src="chapter1.xhtml"/>
+     *   </navPoint>
+     *
+     * Fragment identifiers are stripped from src values for the same reason
+     * as in [parseEpub3Nav].
+     */
+    private fun parseNcx(
+        ncxContent: String,
+        ncxPath: String
+    ): Map<String, String> {
+        val ncxDir = ncxPath.substringBeforeLast("/", "")
+        val doc = Jsoup.parse(ncxContent, "", Parser.xmlParser())
+        return doc.select("navPoint").mapNotNull { navPoint ->
+            val rawSrc = navPoint.selectFirst("content")?.attr("src")
+                ?.substringBefore('#')
+                ?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val title = navPoint.selectFirst("navLabel text")?.text()
+                ?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val absoluteSrc = normalizePath(resolvePath(ncxDir, rawSrc))
+            absoluteSrc to title
+        }.toMap()
+    }
+
+    // ── URL rewriting ─────────────────────────────────────────────────────────
+
     private fun rewriteUrls(
         html: String,
         manifestId: String,
@@ -149,13 +250,13 @@ class EpubContentParser : BookContentParser {
      */
     private fun rewriteResourceUrls(doc: Document, chapterDir: String, filePath: String) {
         val targets = listOf(
-            "img[src]"          to "src",
+            "img[src]" to "src",
             "image[xlink:href]" to "xlink:href",
-            "link[href]"        to "href",
-            "script[src]"       to "src",
-            "audio[src]"        to "src",
-            "video[src]"        to "src",
-            "source[src]"       to "src",
+            "link[href]" to "href",
+            "script[src]" to "src",
+            "audio[src]" to "src",
+            "video[src]" to "src",
+            "source[src]" to "src",
         )
 
         targets.forEach { (selector, attr) ->
@@ -183,7 +284,10 @@ class EpubContentParser : BookContentParser {
      */
     private fun prefixInternalIds(doc: Document, manifestId: String) {
         doc.select("[id]").forEach { el ->
-            el.attr("id", "${manifestId}__${el.id()}")
+            val id = el.id()
+            if (!id.startsWith("${manifestId}__")) {
+                el.attr("id", "${manifestId}__${id}")
+            }
         }
     }
 
@@ -222,27 +326,22 @@ class EpubContentParser : BookContentParser {
             val hrefPath = href.substringBefore('#')
             val fragment = href.substringAfter('#', "").takeIf { '#' in href }
 
-            // Case 3: pure local anchor — prefix with current chapter's manifestId
             if (hrefPath.isEmpty() && fragment != null) {
                 anchor.attr("href", "#${currentManifestId}__${fragment}")
                 return@forEach
             }
 
-            // Resolve the href path to an OPF-relative path for the manifest lookup
             val absolutePath = normalizePath(resolvePath(chapterDir, hrefPath))
-            val opfRelativePath = if (opfDirectory.isEmpty()) absolutePath
-            else absolutePath.removePrefix("$opfDirectory/")
-
-            val targetManifestId = hrefToManifestId[opfRelativePath] ?: return@forEach
+            val targetManifestId = hrefToManifestId[absolutePath] ?: return@forEach
 
             anchor.attr("href", when {
-                // Case 1: cross-chapter with fragment
                 fragment != null -> "#${targetManifestId}__${fragment}"
-                // Case 2: cross-chapter without fragment
-                else             -> "#${targetManifestId}"
+                else -> "#${targetManifestId}"
             })
         }
     }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private fun String.isAbsoluteUri(): Boolean =
         startsWith("epub://")
@@ -250,7 +349,6 @@ class EpubContentParser : BookContentParser {
                 || startsWith("http:")
                 || startsWith("https:")
                 || startsWith("//")
-                || isEmpty()
 
     private fun String.isExternalScheme(): Boolean =
         startsWith("mailto:") || startsWith("tel:")
@@ -287,20 +385,21 @@ class EpubContentParser : BookContentParser {
     }
 
     /**
-     * Extracts the chapter title from the HTML content file.
-     * Tries the following in order of priority:
+     * Fallback chapter title extraction from the HTML content file.
+     * Used only when the nav/NCX document does not contain a title for this chapter
+     * (e.g. malformed EPUBs, cover pages, or auto-generated nav documents).
      *
-     *   1. <title>Chapter I</title>       — HTML head title
-     *   2. <h1>Chapter I</h1>             — first top-level heading
-     *   3. <h2>Chapter I</h2>             — second-level heading fallback
+     * Tries in order:
+     *   1. <title>  — HTML head title (often the book title; last resort)
+     *   2. <h1>     — first top-level heading
+     *   3. <h2>     — second-level heading fallback
      *
-     * Returns null if none are found or all are blank (e.g. auto-generated
-     * nav documents or cover pages with no visible heading).
+     * Returns null if none are found or all are blank.
      */
     private fun extractChapterTitle(htmlContent: String): String? {
         val doc = Jsoup.parse(htmlContent)
-        return doc.selectFirst("title")?.text()?.takeIf { it.isNotBlank() }
-            ?: doc.selectFirst("h1")?.text()?.takeIf { it.isNotBlank() }
+        return doc.selectFirst("h1")?.text()?.takeIf { it.isNotBlank() }
             ?: doc.selectFirst("h2")?.text()?.takeIf { it.isNotBlank() }
+            ?: doc.selectFirst("title")?.text()?.takeIf { it.isNotBlank() }
     }
 }
