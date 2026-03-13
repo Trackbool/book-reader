@@ -51,7 +51,7 @@ let totalPages = 0;
 
 // ─── Initialisation ──────────────────────────────────────────────────────────
 
-function initShadow() {
+function _initShadow() {
     const host = document.getElementById('content');
     shadowRoot = host.attachShadow({ mode: 'open' });
 
@@ -65,7 +65,7 @@ function initShadow() {
     shadowRoot.appendChild(pager);
 
     _updateSizes();
-    initSwipeGesture();
+    _initSwipeGesture();
 }
 
 function _updateSizes() {
@@ -75,7 +75,7 @@ function _updateSizes() {
     shadowRoot.host.style.setProperty('--vh', `${h}px`);
 }
 
-function initSwipeGesture() {
+function _initSwipeGesture() {
     const host = shadowRoot.host;
     let startX = 0;
     let startTime = 0;
@@ -93,7 +93,7 @@ function initSwipeGesture() {
     host.addEventListener('touchmove', (e) => {
         if (!dragging) return;
 
-        const colWidth = getRealColumnWidth();
+        const colWidth = _getRealColumnWidth();
         const deltaX = e.touches[0].clientX - startX;
 
         if ((deltaX > 0 && currentPage === 0) ||
@@ -107,7 +107,7 @@ function initSwipeGesture() {
         if (!dragging) return;
         dragging = false;
 
-        const colWidth = getRealColumnWidth();
+        const colWidth = _getRealColumnWidth();
         const deltaX = e.changedTouches[0].clientX - startX;
         const velocity = Math.abs(deltaX) / (Date.now() - startTime);
 
@@ -148,12 +148,12 @@ async function loadContent(chaptersJson, progressJson = "") {
     requestAnimationFrame(() => {
         requestAnimationFrame(() => {
             setTimeout(() => {
-                buildSectionCache();
+                _buildSectionCache();
                 calculateTotalPages();
 
                 if (progressJson) {
                     const { chapterId, nodeIndex, nodeOffset = 0 } = JSON.parse(progressJson);
-                    restoreProgress(chapterId, nodeIndex, nodeOffset);
+                    _restoreProgress(chapterId, nodeIndex, nodeOffset);
                 }
 
                 setTimeout(() => {
@@ -168,14 +168,14 @@ async function loadContent(chaptersJson, progressJson = "") {
 // Builds cachedSections from the live DOM. Called once after content loads
 // and again after a resize only if the section structure could have changed.
 // Node geometry (startPage, pageCount, endPage) is computed here once and
-// cached so emitProgress() never needs to read the DOM on the hot path.
-function buildSectionCache() {
+// cached so _emitProgress() never needs to read the DOM on the hot path.
+function _buildSectionCache() {
     cachedSections = [...pager.querySelectorAll('section[id]')].map(section => ({
         id: section.id,
         el: section,
         nodes: [...section.querySelectorAll(BLOCK_SELECTOR)].map(node => {
-            const startPage = getNodeStartPage(node);
-            const pageCount = getNodePageCount(node);
+            const startPage = _getNodeStartPage(node);
+            const pageCount = _getNodePageCount(node);
             return { el: node, startPage, pageCount, endPage: startPage + pageCount - 1 };
         })
     }));
@@ -189,7 +189,7 @@ function goToPage(page, forceEmit = false) {
     if (!pager) return;
 
     const newPage  = Math.max(0, Math.min(page, totalPages - 1));
-    const colWidth = getRealColumnWidth();
+    const colWidth = _getRealColumnWidth();
     pager.style.transform = `translateX(${-newPage * colWidth}px)`;
 
     const pageChanged = newPage !== currentPage;
@@ -197,9 +197,9 @@ function goToPage(page, forceEmit = false) {
 
     if (pageChanged) {
         bridge.onPageChanged(currentPage + 1, totalPages);
-        emitProgress();
+        _emitProgress();
     } else if (forceEmit) {
-        emitProgress();
+        _emitProgress();
     }
 }
 
@@ -208,7 +208,7 @@ function navigateToId(id) {
     const el = shadowRoot.getElementById(id);
     if (!pager || !el) return;
 
-    const colWidth = getRealColumnWidth();
+    const colWidth = _getRealColumnWidth();
 
     const pagerRect = pager.getBoundingClientRect();
     const elRect = el.getBoundingClientRect();
@@ -221,10 +221,10 @@ function navigateToId(id) {
 
 // ─── Page count ──────────────────────────────────────────────────────────────
 
-function getTotalPages() {
+function _getTotalPages() {
     if (!pager || !pager.firstElementChild) return 0;
 
-    const colWidth = getRealColumnWidth();
+    const colWidth = _getRealColumnWidth();
 
     const range = document.createRange();
     range.selectNodeContents(pager);
@@ -237,17 +237,16 @@ function getTotalPages() {
 }
 
 function calculateTotalPages() {
-    totalPages = getTotalPages();
+    totalPages = _getTotalPages();
     bridge.onPagesCalculated(totalPages);
 }
 
 // ─── Column width helper ──────────────────────────────────────────────────────
 
-function getRealColumnWidth() {
+function _getRealColumnWidth() {
     if (cachedColumnWidth) return cachedColumnWidth;
 
     const width = pager.getBoundingClientRect().width;
-
     cachedColumnWidth = width > 0
         ? width
         : parseFloat(shadowRoot.host.style.getPropertyValue('--vw'));
@@ -263,8 +262,8 @@ function getRealColumnWidth() {
 // pager is shifted with translateX: rects are viewport-relative and would be
 // wrong when the pager is not at position 0. offsetLeft is always relative to
 // the un-transformed layout.
-function getNodeStartPage(node) {
-    const colWidth = getRealColumnWidth();
+function _getNodeStartPage(node) {
+    const colWidth = _getRealColumnWidth();
 
     const pagerRect = pager.getBoundingClientRect();
     const nodeRect  = node.getBoundingClientRect();
@@ -278,8 +277,8 @@ function getNodeStartPage(node) {
 // In CSS multi-column layout, a block element's offsetWidth is its total
 // horizontal extent across all the columns it occupies. Dividing by colWidth
 // gives the page count; ceil counts a partial last page as a full page.
-function getNodePageCount(node) {
-    const colWidth = getRealColumnWidth();
+function _getNodePageCount(node) {
+    const colWidth = _getRealColumnWidth();
     const width    = node.getBoundingClientRect().width;
     return Math.max(1, Math.ceil(width / colWidth));
 }
@@ -308,7 +307,7 @@ let lastProgress = null;
 // after a font-size change that alters pageCount:
 //   small font → node spans 2 pages, saved nodeOffset = 0.5 → page 1 of 2
 //   large font → node spans 4 pages, restored nodeOffset = 0.5 → page 2 of 4
-function emitProgress() {
+function _emitProgress() {
     if (!pager) return;
 
     const sections = cachedSections;
@@ -378,14 +377,14 @@ function _reportProgress(chapterId, nodeIndex, nodeOffset) {
 
 // Navigates to the page described by { chapterId, nodeIndex, nodeOffset }.
 //
-// Inverse of emitProgress():
-//   nodeStartPage = getNodeStartPage(target)        — live layout
-//   nodePageCount = getNodePageCount(target)        — live layout
+// Inverse of _emitProgress():
+//   nodeStartPage = _getNodeStartPage(target)        — live layout
+//   nodePageCount = _getNodePageCount(target)        — live layout
 //   targetPage    = nodeStartPage + floor(nodeOffset * nodePageCount)
 //
 // Both measurements are taken from the current DOM, so the result is correct
 // regardless of whether the font size has changed since progress was saved.
-function restoreProgress(chapterId, nodeIndex, nodeOffset = 0) {
+function _restoreProgress(chapterId, nodeIndex, nodeOffset = 0) {
     const section = cachedSections.find(s => s.id === chapterId);
 
     if (!section) {
@@ -430,12 +429,12 @@ function onResize() {
 // node anchor instead.
 function _recalculateAfterResize() {
     cachedColumnWidth = null;
-    buildSectionCache();
+    _buildSectionCache();
     calculateTotalPages();
 
     if (lastProgress) {
         const { chapterId, nodeIndex, nodeOffset } = lastProgress;
-        restoreProgress(chapterId, nodeIndex, nodeOffset);
+        _restoreProgress(chapterId, nodeIndex, nodeOffset);
     } else {
         goToPage(Math.min(currentPage, totalPages - 1));
     }
@@ -444,7 +443,7 @@ function _recalculateAfterResize() {
 // ─── Entry point ─────────────────────────────────────────────────────────────
 
 function init() {
-    initShadow();
+    _initShadow();
     setupNavigationHandler(shadowRoot);
 }
 
