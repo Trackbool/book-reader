@@ -11,9 +11,11 @@ import com.trackbool.bookreader.domain.usecase.GetBookUseCase
 import com.trackbool.bookreader.domain.usecase.UpdateBookProgressUseCase
 import com.trackbool.bookreader.ui.model.ChapterView
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -56,6 +58,9 @@ class BookReaderViewModel @Inject constructor(
     val isLoading: StateFlow<Boolean> = combine(_isLoadingData, _isLoadingRender) { data, render ->
         data || render
     }.stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    private val _goToPage = MutableSharedFlow<Int>()
+    val goToPage = _goToPage.asSharedFlow()
 
     init {
         loadBook()
@@ -125,6 +130,12 @@ class BookReaderViewModel @Inject constructor(
     fun onChapterChanged(chapterId: String) {
         if (chapterId.isNotEmpty()) {
             _currentChapter.value = _chapters.value.find { it.id == chapterId }
+        }
+    }
+
+    fun requestPageNavigation(page: Int) {
+        viewModelScope.launch {
+            _goToPage.emit(page)
         }
     }
 

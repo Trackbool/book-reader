@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.graphics.Color
 import android.util.Base64
 import android.util.Log
+import android.view.MotionEvent
+import android.view.ViewConfiguration
 import android.webkit.WebView
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +23,7 @@ import com.trackbool.bookreader.domain.model.ChapterContent
 import com.trackbool.bookreader.ui.components.rememberAppAssetResolver
 import com.trackbool.bookreader.ui.components.rememberEpubAssetResolver
 import com.trackbool.bookreader.ui.epub.ASSET_BASE_URL
+import com.trackbool.bookreader.ui.epub.EpubBridge
 import com.trackbool.bookreader.ui.epub.EpubJavascriptInterface
 import com.trackbool.bookreader.ui.epub.EpubWebViewClient
 import com.trackbool.bookreader.ui.model.ChapterView
@@ -28,6 +31,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import kotlin.math.abs
 
 @SuppressLint("JavascriptInterface")
 @Composable
@@ -36,7 +40,8 @@ internal fun EpubWebViewBase(
     chapters: List<ChapterView>,
     assetFileName: String,
     modifier: Modifier = Modifier,
-    extraJavascriptInterfaces: List<Pair<EpubJavascriptInterface, String>> = emptyList()
+    extraJavascriptInterfaces: List<Pair<EpubJavascriptInterface, String>> = emptyList(),
+    onScreenTapped: () -> Unit = {},
 ) {
     val appAssetResolver = rememberAppAssetResolver()
     val epubAssetResolver = rememberEpubAssetResolver(book.filePath)
@@ -93,6 +98,9 @@ internal fun EpubWebViewBase(
 
                     extraJavascriptInterfaces.forEach { (obj, name) ->
                         addJavascriptInterface(obj, name)
+                        if (obj is EpubBridge) {
+                            obj.setExecuteJavascript { js -> evaluateJavascript(js, null) }
+                        }
                     }
 
                     webViewClient = EpubWebViewClient(
@@ -101,6 +109,29 @@ internal fun EpubWebViewBase(
                         appAssetResolver = appAssetResolver,
                         onPageReady = { pageReady = true },
                     )
+
+                    val touchSlop = ViewConfiguration.get(ctx).scaledTouchSlop
+                    var downX = 0f
+                    var downY = 0f
+
+                    setOnTouchListener { view, event ->
+                        when (event.actionMasked) {
+                            MotionEvent.ACTION_DOWN -> {
+                                downX = event.x
+                                downY = event.y
+                            }
+                            MotionEvent.ACTION_UP -> {
+                                val dx = abs(event.x - downX)
+                                val dy = abs(event.y - downY)
+
+                                if (dx <= touchSlop && dy <= touchSlop) {
+                                    view.performClick()
+                                    onScreenTapped()
+                                }
+                            }
+                        }
+                        false
+                    }
 
                     loadDataWithBaseURL(
                         ASSET_BASE_URL,

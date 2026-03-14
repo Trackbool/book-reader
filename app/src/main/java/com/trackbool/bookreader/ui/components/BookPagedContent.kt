@@ -6,6 +6,7 @@ import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.ui.components.epub.EpubPagedReader
 import com.trackbool.bookreader.ui.model.ChapterView
+import kotlinx.coroutines.flow.SharedFlow
 
 @Composable
 fun BookPagedContent(
@@ -13,8 +14,10 @@ fun BookPagedContent(
     chapters: List<ChapterView>,
     onCurrentPageChanged: (Int) -> Unit,
     onTotalPagesCalculated: (Int) -> Unit,
+    goToPage: SharedFlow<Int>,
     onContentReady: () -> Unit,
     onProgressChanged: (Float, String, String) -> Unit,
+    onScreenTapped: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (book.fileType) {
@@ -23,8 +26,10 @@ fun BookPagedContent(
             chapters = chapters,
             onCurrentPageChanged = onCurrentPageChanged,
             onTotalPagesCalculated = onTotalPagesCalculated,
+            goToPage = goToPage,
             onContentReady = onContentReady,
             onProgressChanged = onProgressChanged,
+            onScreenTapped = onScreenTapped,
             modifier = modifier,
         )
         BookFileType.PDF -> UnsupportedFormatMessage(format = "PDF", modifier = modifier)

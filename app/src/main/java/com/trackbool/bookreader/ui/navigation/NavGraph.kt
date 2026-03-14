@@ -69,6 +69,7 @@ fun AppNavGraph(
             val hasError by viewModel.hasError.collectAsState()
             val currentPage by viewModel.currentPage.collectAsState()
             val totalPages by viewModel.totalPages.collectAsState()
+            val goToPage = viewModel.goToPage
 
             book?.let { b ->
                 BookReaderScreen(
@@ -79,6 +80,8 @@ fun AppNavGraph(
                     hasError = hasError,
                     currentPage = currentPage,
                     totalPages = totalPages,
+                    goToPage = goToPage,
+                    onRequestPage = viewModel::requestPageNavigation,
                     onBack = { navController.popBackStack() },
                     onCurrentPageChanged = viewModel::onPageChanged,
                     onTotalPagesCalculated = viewModel::onTotalPagesCalculated,

@@ -1,25 +1,34 @@
 package com.trackbool.bookreader.ui.screens
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.surfaceColorAtElevation
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -30,6 +39,8 @@ import com.trackbool.bookreader.ui.components.BookScrollContent
 import com.trackbool.bookreader.ui.components.LoadingIndicator
 import com.trackbool.bookreader.ui.model.ChapterView
 import com.trackbool.bookreader.ui.model.ReaderMode
+import kotlinx.coroutines.flow.SharedFlow
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,6 +52,8 @@ fun BookReaderScreen(
     hasError: Boolean,
     currentPage: Int,
     totalPages: Int,
+    goToPage: SharedFlow<Int>,
+    onRequestPage: (Int) -> Unit,
     onBack: () -> Unit,
     onCurrentPageChanged: (Int) -> Unit,
     onTotalPagesCalculated: (Int) -> Unit,
@@ -49,6 +62,7 @@ fun BookReaderScreen(
     modifier: Modifier = Modifier,
 ) {
     val readerMode = ReaderMode.PAGED
+    var controlsVisible by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -130,7 +144,9 @@ fun BookReaderScreen(
                                 onContentReady = onContentReady,
                                 onCurrentPageChanged = onCurrentPageChanged,
                                 onTotalPagesCalculated = onTotalPagesCalculated,
+                                goToPage = goToPage,
                                 onProgressChanged = onProgressChanged,
+                                onScreenTapped = { controlsVisible = !controlsVisible },
                                 modifier = Modifier.fillMaxSize(),
                             )
                         }
@@ -142,15 +158,29 @@ fun BookReaderScreen(
                 }
             }
 
-            BookProgress(
-                book = book,
-                currentPage = currentPage,
-                totalPages = totalPages,
-                readerMode = readerMode,
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .padding(vertical = 8.dp)
-            )
+            Box(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+
+                if (controlsVisible && totalPages > 0) {
+                    ReaderSlider(
+                        currentPage = currentPage,
+                        totalPages = totalPages,
+                        onPageSelected = onRequestPage,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    BookProgress(
+                        book = book,
+                        currentPage = currentPage,
+                        totalPages = totalPages,
+                        readerMode = readerMode,
+                        modifier = Modifier
+                            .padding(bottom = 8.dp)
+                            .align(Alignment.Center)
+                    )
+                }
+            }
         }
     }
 }
@@ -175,4 +205,57 @@ fun BookProgress(
         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
         modifier = modifier
     )
+}
+
+@Composable
+fun ReaderSlider(
+    currentPage: Int,
+    totalPages: Int,
+    onPageSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var sliderPosition by remember(currentPage) {
+        mutableFloatStateOf(currentPage.toFloat())
+    }
+
+    Surface(
+        modifier = modifier
+            .padding(16.dp)
+            .navigationBarsPadding(),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
+        tonalElevation = 3.dp,
+        shadowElevation = 6.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = stringResource(
+                    R.string.reader_slider_page_indicator,
+                    sliderPosition.roundToInt(),
+                    totalPages
+                ),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Slider(
+                value = sliderPosition,
+                valueRange = 1f..totalPages.coerceAtLeast(1).toFloat(),
+                onValueChange = { sliderPosition = it },
+                onValueChangeFinished = { onPageSelected(sliderPosition.roundToInt()) },
+                colors = SliderDefaults.colors(
+                    thumbColor = MaterialTheme.colorScheme.primary,
+                    activeTrackColor = MaterialTheme.colorScheme.primary,
+                    inactiveTrackColor = MaterialTheme.colorScheme.secondaryContainer,
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
 }
