@@ -52,8 +52,8 @@ function setupNavigationHandler(shadowRoot) {
   });
 }
 
-function setupTapDetector(shadowRoot) {
-  shadowRoot.addEventListener('click', (e) => {
+function setupTapDetector() {
+  document.addEventListener('click', (e) => {
     // If any element in the chain already handled this tap, bail out
     if (e.defaultPrevented) return;
 
