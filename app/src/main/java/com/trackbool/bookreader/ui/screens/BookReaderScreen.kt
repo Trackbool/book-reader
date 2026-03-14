@@ -221,9 +221,9 @@ fun ReaderControls(
     Surface(
         modifier = modifier.navigationBarsPadding(),
         shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
-        tonalElevation = 3.dp,
-        shadowElevation = 6.dp
+        color = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp),
+        tonalElevation = 1.dp,
+        shadowElevation = 1.dp
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
