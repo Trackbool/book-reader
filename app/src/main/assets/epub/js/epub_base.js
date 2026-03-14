@@ -53,9 +53,18 @@ function setupNavigationHandler(shadowRoot) {
 }
 
 function setupTapDetector() {
+  let hasSelection = false;
+
+  document.addEventListener('selectionchange', () => {
+    const sel = document.getSelection();
+    hasSelection = sel && sel.toString().length > 0;
+  });
+
   document.addEventListener('click', (e) => {
     // If any element in the chain already handled this tap, bail out
     if (e.defaultPrevented) return;
+
+    if (hasSelection) return;
 
     const ignored = [
       'a',
