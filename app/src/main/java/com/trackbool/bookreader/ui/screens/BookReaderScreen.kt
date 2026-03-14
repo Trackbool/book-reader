@@ -1,10 +1,8 @@
 package com.trackbool.bookreader.ui.screens
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,7 +27,6 @@ import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -159,27 +156,33 @@ fun BookReaderScreen(
                 }
             }
 
-            Box(
+            AnimatedContent(
+                targetState = controlsVisible && totalPages > 0,
+                label = "BottomBarTransition",
                 modifier = Modifier.fillMaxWidth()
-            ) {
-
-                if (controlsVisible && totalPages > 0) {
+            ) { showControls ->
+                if (showControls) {
                     ReaderControls(
                         currentPage = currentPage,
                         totalPages = totalPages,
                         onPageSelected = onRequestPage,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
                     )
                 } else {
-                    BookProgress(
-                        book = book,
-                        currentPage = currentPage,
-                        totalPages = totalPages,
-                        readerMode = readerMode,
-                        modifier = Modifier
-                            .padding(bottom = 8.dp)
-                            .align(Alignment.Center)
-                    )
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        BookProgress(
+                            book = book,
+                            currentPage = currentPage,
+                            totalPages = totalPages,
+                            readerMode = readerMode,
+                            modifier = Modifier.padding(bottom = 8.dp, top = 4.dp)
+                        )
+                    }
                 }
             }
         }
