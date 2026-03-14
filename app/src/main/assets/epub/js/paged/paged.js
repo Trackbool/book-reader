@@ -58,6 +58,7 @@ let lastProgress = null;
 function init() {
     _initShadow();
     setupNavigationHandler(shadowRoot);
+    setupTapDetector(shadowRoot);
 }
 
 document.addEventListener('DOMContentLoaded', init);

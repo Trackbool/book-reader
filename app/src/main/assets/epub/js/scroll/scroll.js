@@ -39,6 +39,7 @@ let scrollLocked = false;
 function init() {
     _initShadow();
     setupNavigationHandler(shadowRoot);
+    setupTapDetector(shadowRoot);
 }
 
 document.addEventListener('DOMContentLoaded', init);

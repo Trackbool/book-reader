@@ -51,3 +51,38 @@ function setupNavigationHandler(shadowRoot) {
     }
   });
 }
+
+function setupTapDetector(shadowRoot) {
+  shadowRoot.addEventListener('click', (e) => {
+    // If any element in the chain already handled this tap, bail out
+    if (e.defaultPrevented) return;
+
+    const ignored = [
+      'a',
+      'button',
+      'input',
+      'select',
+      'textarea',
+      'audio',        // epub3: inline audio controls
+      'video',        // epub3: inline video controls
+      'details',      // collapsible sections (epub3 / fixed-layout)
+      'summary',      // toggle for <details>
+      'label',        // form labels
+      'object',       // iBooks interactive widgets (application/x-ibooks+widget)
+      '[role="button"]',
+      '[role="link"]',
+      '[role="checkbox"]',
+      '[role="switch"]',
+      '[role="menuitem"]',
+      '[onclick]',
+      '[contenteditable]',
+    ];
+
+    if (ignored.some(selector => e.target.closest(selector))) return;
+
+    const style = window.getComputedStyle(e.target);
+    if (style.cursor === 'pointer') return;
+
+    window.TapDetector?.notifyScreenTapped();
+  });
+}
