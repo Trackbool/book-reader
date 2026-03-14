@@ -209,22 +209,22 @@ fun BookProgress(
 }
 
 @Composable
-fun ReaderControls(currentPage: Int,
-                   totalPages: Int,
-                   onPageSelected: (Int) -> Unit,
-                   modifier: Modifier) {
+fun ReaderControls(
+    currentPage: Int,
+    totalPages: Int,
+    onPageSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
     Surface(
-        modifier = modifier
-            .padding(16.dp)
-            .navigationBarsPadding(),
+        modifier = modifier.navigationBarsPadding(),
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
         tonalElevation = 3.dp,
         shadowElevation = 6.dp
     ) {
         Column(
-            modifier = modifier
-                .padding(horizontal = 20.dp, vertical = 12.dp)
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             ReaderSlider(
                 currentPage = currentPage,
@@ -247,7 +247,7 @@ fun ReaderSlider(
     }
 
     Column(
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
@@ -260,7 +260,7 @@ fun ReaderSlider(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(modifier = modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         Slider(
             value = sliderPosition,
@@ -272,7 +272,7 @@ fun ReaderSlider(
                 activeTrackColor = MaterialTheme.colorScheme.primary,
                 inactiveTrackColor = MaterialTheme.colorScheme.secondaryContainer,
             ),
-            modifier = modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }
