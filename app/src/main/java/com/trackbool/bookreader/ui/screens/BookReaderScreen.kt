@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -163,7 +164,7 @@ fun BookReaderScreen(
             ) {
 
                 if (controlsVisible && totalPages > 0) {
-                    ReaderSlider(
+                    ReaderControls(
                         currentPage = currentPage,
                         totalPages = totalPages,
                         onPageSelected = onRequestPage,
@@ -208,16 +209,10 @@ fun BookProgress(
 }
 
 @Composable
-fun ReaderSlider(
-    currentPage: Int,
-    totalPages: Int,
-    onPageSelected: (Int) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var sliderPosition by remember(currentPage) {
-        mutableFloatStateOf(currentPage.toFloat())
-    }
-
+fun ReaderControls(currentPage: Int,
+                   totalPages: Int,
+                   onPageSelected: (Int) -> Unit,
+                   modifier: Modifier) {
     Surface(
         modifier = modifier
             .padding(16.dp)
@@ -228,34 +223,56 @@ fun ReaderSlider(
         shadowElevation = 6.dp
     ) {
         Column(
-            modifier = Modifier
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = modifier
+                .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
-            Text(
-                text = stringResource(
-                    R.string.reader_slider_page_indicator,
-                    sliderPosition.roundToInt(),
-                    totalPages
-                ),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Slider(
-                value = sliderPosition,
-                valueRange = 1f..totalPages.coerceAtLeast(1).toFloat(),
-                onValueChange = { sliderPosition = it },
-                onValueChangeFinished = { onPageSelected(sliderPosition.roundToInt()) },
-                colors = SliderDefaults.colors(
-                    thumbColor = MaterialTheme.colorScheme.primary,
-                    activeTrackColor = MaterialTheme.colorScheme.primary,
-                    inactiveTrackColor = MaterialTheme.colorScheme.secondaryContainer,
-                ),
-                modifier = Modifier.fillMaxWidth()
+            ReaderSlider(
+                currentPage = currentPage,
+                totalPages = totalPages,
+                onPageSelected = onPageSelected
             )
         }
+    }
+}
+
+@Composable
+fun ReaderSlider(
+    currentPage: Int,
+    totalPages: Int,
+    onPageSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var sliderPosition by remember(currentPage) {
+        mutableFloatStateOf(currentPage.toFloat())
+    }
+
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = stringResource(
+                R.string.reader_slider_page_indicator,
+                sliderPosition.roundToInt(),
+                totalPages
+            ),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = modifier.height(4.dp))
+
+        Slider(
+            value = sliderPosition,
+            valueRange = 1f..totalPages.coerceAtLeast(1).toFloat(),
+            onValueChange = { sliderPosition = it },
+            onValueChangeFinished = { onPageSelected(sliderPosition.roundToInt()) },
+            colors = SliderDefaults.colors(
+                thumbColor = MaterialTheme.colorScheme.primary,
+                activeTrackColor = MaterialTheme.colorScheme.primary,
+                inactiveTrackColor = MaterialTheme.colorScheme.secondaryContainer,
+            ),
+            modifier = modifier.fillMaxWidth()
+        )
     }
 }
