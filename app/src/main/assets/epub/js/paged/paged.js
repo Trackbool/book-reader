@@ -288,18 +288,17 @@ function _buildSrcdoc(chapter) {
     const content = decodeB64(chapter.html);
 
     return `<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<base href="${base}">
-<link rel="stylesheet" href="css/paged/paged.css">
-<link rel="stylesheet" href="css/paged/paged_iframe.css">
-</head>
-<body>
-<div id="pager"><section id="${chapter.id}">${content}</section></div>
-<script src="js/paged/paged_iframe.js"></script>
-</body>
-</html>`;
+            <html lang="es">
+            <head>
+            <meta charset="utf-8">
+            <base href="${base}">
+            <link rel="stylesheet" href="css/paged/paged.css">
+            </head>
+            <body>
+            <div id="pager"><section id="${chapter.id}">${content}</section></div>
+            <script src="js/paged/paged_iframe.js"></script>
+            </body>
+            </html>`;
 }
 
 // ─── Private — layout ─────────────────────────────────────────────────────────
