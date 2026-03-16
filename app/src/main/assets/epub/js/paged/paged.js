@@ -29,20 +29,6 @@
 
 // BLOCK_SELECTOR is declared in epub_base.js.
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-/** Minimum swipe distance as a fraction of colWidth to trigger a page turn. */
-const SWIPE_THRESHOLD = 0.20;
-
-/** Minimum swipe velocity (px/ms) to trigger a page turn regardless of distance. */
-const SWIPE_VELOCITY = 0.30;
-
-/** CSS transition used for page navigation animations. */
-const TRANSITION_PAGE = 'transform .3s ease';
-
-/** Duration of the page transition in ms, must match TRANSITION_PAGE. */
-const TRANSITION_DURATION = 300;
-
 // ─── State ────────────────────────────────────────────────────────────────────
 
 /** Outer overflow-hidden viewport container. */
@@ -83,7 +69,14 @@ function init() {
     contentEl        = document.getElementById('content');
     chapterContainer = document.getElementById('chapter-container');
     colWidth         = _readColumnWidth();
-    _initSwipeGesture();
+    initSwipeHandler(
+        () => chapters,
+        () => currentPage,
+        () => totalPages,
+        () => colWidth,
+        chapterContainer,
+        goToPage
+    );
     setupTapDetector(); // epub_base.js — attaches to the parent document
 }
 
@@ -522,75 +515,6 @@ function _readColumnWidth() {
         ? contentEl.getBoundingClientRect().width
         : window.innerWidth;
     return Math.floor(width);
-}
-
-// ─── Private — swipe gestures ─────────────────────────────────────────────────
-
-/**
- * Creates a full-viewport transparent overlay that captures all touch events
- * directly in the parent context.
- *
- * This mirrors the Shadow DOM version's approach (listening on the host element)
- * and avoids the cross-iframe forwarding that caused drag jitter. Touch events
- * fire in the same JS context as the style.transform writes, with no async
- * boundary in between.
- */
-function _initSwipeGesture() {
-    const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;';
-    document.body.appendChild(overlay);
-
-    let startX = 0, startY = 0, startTime = 0, dragging = false;
-
-    overlay.addEventListener('touchstart', e => {
-        const t = e.touches[0];
-        startX    = t.clientX;
-        startY    = t.clientY;
-        startTime = Date.now();
-        dragging  = true;
-    }, { passive: true });
-
-    overlay.addEventListener('touchmove', e => {
-        if (!dragging) return;
-
-        const t  = e.touches[0];
-        const dx = t.clientX - startX;
-        const dy = t.clientY - startY;
-
-        // Only intercept horizontal gestures; let vertical ones fall through.
-        if (Math.abs(dx) <= Math.abs(dy)) return;
-        e.preventDefault();
-
-        const atStart = dx > 0 && currentPage === 0;
-        const atEnd   = dx < 0 && currentPage === totalPages - 1;
-        if (atStart || atEnd) return;
-
-        chapterContainer.style.transition = 'none';
-        chapterContainer.style.transform  =
-            `translateX(${-currentPage * colWidth + dx}px)`;
-    }, { passive: false });
-
-    overlay.addEventListener('touchend', e => {
-        if (!dragging) return;
-        dragging = false;
-
-        const t       = e.changedTouches[0];
-        const dx      = t.clientX - startX;
-        const dy      = t.clientY - startY;
-        const elapsed = Date.now() - startTime;
-
-        // Swipe: commit to next/previous page or snap back.
-        const velocity = Math.abs(dx) / Math.max(1, elapsed);
-        const passes   = Math.abs(dx) > colWidth * SWIPE_THRESHOLD || velocity > SWIPE_VELOCITY;
-
-        chapterContainer.style.transition = TRANSITION_PAGE;
-
-        if      (dx < 0 && passes && currentPage < totalPages - 1) goToPage(currentPage + 1);
-        else if (dx > 0 && passes && currentPage > 0)               goToPage(currentPage - 1);
-        else                                                         goToPage(currentPage);
-
-        setTimeout(() => { chapterContainer.style.transition = 'none'; }, TRANSITION_DURATION);
-    }, { passive: true });
 }
 
 // ─── Private — iframe sizing ──────────────────────────────────────────────────
