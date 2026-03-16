@@ -37,6 +37,12 @@ const SWIPE_THRESHOLD = 0.20;
 /** Minimum swipe velocity (px/ms) to trigger a page turn regardless of distance. */
 const SWIPE_VELOCITY = 0.30;
 
+/** CSS transition used for page navigation animations. */
+const TRANSITION_PAGE = 'transform .3s ease';
+
+/** Duration of the page transition in ms, must match TRANSITION_PAGE. */
+const TRANSITION_DURATION = 300;
+
 // ─── State ────────────────────────────────────────────────────────────────────
 
 /** Outer overflow-hidden viewport container. */
@@ -139,7 +145,7 @@ function goToPage(page, forceEmit = false, animate = true) {
     const newPage   = Math.max(0, Math.min(page, totalPages - 1));
     const doAnimate = animate && Math.abs(newPage - currentPage) <= 2;
 
-    chapterContainer.style.transition = doAnimate ? 'transform .3s ease' : 'none';
+    chapterContainer.style.transition = doAnimate ? TRANSITION_PAGE : 'none';
     chapterContainer.style.transform  = `translateX(${-newPage * colWidth}px)`;
 
     const changed = newPage !== currentPage;
@@ -281,62 +287,17 @@ function _buildSrcdoc(chapter) {
     const base    = new URL('epub/', window.location.href).href;
     const content = decodeB64(chapter.html);
 
-    // Split '</script>' to prevent premature tag closure inside this .js source.
-    const closeScript = '<' + '/script>';
-
     return `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
 <base href="${base}">
 <link rel="stylesheet" href="css/paged/paged.css">
-<style>
-html, body {
-    margin: 0 !important;
-    padding: 0 !important;
-    width: 100%;
-    height: 100%;
-    overflow: visible;
-    background: transparent;
-}
-* { box-sizing: border-box; }
-</style>
+<link rel="stylesheet" href="css/paged/paged_iframe.css">
 </head>
 <body>
 <div id="pager"><section id="${chapter.id}">${content}</section></div>
-<script>(function () {
-    var p = window.parent;
-
-    // Handle in-book anchor clicks and tap notifications for programmatic
-    // or accessibility-driven interactions that bypass the parent overlay.
-    document.addEventListener('click', function (e) {
-        if (e.defaultPrevented) return;
-
-        // Ignore clicks that follow text selection.
-        var sel = document.getSelection();
-        if (sel && sel.toString().length > 0) return;
-
-        // Handle in-book anchor navigation.
-        var a = e.target.closest('a[href]');
-        if (a) {
-            e.preventDefault();
-            var h = a.getAttribute('href');
-            if (h.charAt(0) === '#') p.navigateToId(h.slice(1));
-            else p.location.href = h;
-            return;
-        }
-
-        // Do not fire a tap notification for interactive elements.
-        var ignored = [
-            'button', 'input', 'select', 'textarea',
-            '[role="button"]', '[role="link"]', '[onclick]', '[contenteditable]',
-        ];
-        if (ignored.some(function (s) { return e.target.closest(s); })) return;
-        if (window.getComputedStyle(e.target).cursor === 'pointer') return;
-
-        p.window.TapDetector && p.window.TapDetector.notifyScreenTapped();
-    });
-})();${closeScript}
+<script src="js/paged/paged_iframe.js"></script>
 </body>
 </html>`;
 }
@@ -633,13 +594,13 @@ function _initSwipeGesture() {
         const velocity = Math.abs(dx) / Math.max(1, elapsed);
         const passes   = Math.abs(dx) > colWidth * SWIPE_THRESHOLD || velocity > SWIPE_VELOCITY;
 
-        chapterContainer.style.transition = 'transform .3s ease';
+        chapterContainer.style.transition = TRANSITION_PAGE;
 
         if      (dx < 0 && passes && currentPage < totalPages - 1) goToPage(currentPage + 1);
         else if (dx > 0 && passes && currentPage > 0)               goToPage(currentPage - 1);
         else                                                         goToPage(currentPage);
 
-        setTimeout(() => { chapterContainer.style.transition = 'none'; }, 300);
+        setTimeout(() => { chapterContainer.style.transition = 'none'; }, TRANSITION_DURATION);
     }, { passive: true });
 }
 
