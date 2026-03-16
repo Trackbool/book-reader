@@ -604,55 +604,6 @@ function _initSwipeGesture() {
     }, { passive: true });
 }
 
-/**
- * Forwards a tap to the iframe content at (clientX, clientY).
- *
- * Mirrors the click handler injected into each iframe: checks for text
- * selection, handles anchor navigation, and notifies TapDetector.
- *
- * @param {number} clientX  Viewport X of the tap.
- * @param {number} clientY  Viewport Y of the tap.
- */
-function _handleTap(clientX, clientY) {
-    for (const ch of chapters) {
-        const rect = ch.el.getBoundingClientRect();
-        if (clientX < rect.left || clientX > rect.right ||
-            clientY < rect.top  || clientY > rect.bottom) continue;
-
-        const doc = ch.el.contentDocument;
-        if (!doc) break;
-
-        // Ignore if the user just finished selecting text (e.g., long press).
-        const sel = doc.getSelection();
-        if (sel && sel.toString().length > 0) return;
-
-        // Convert viewport coordinates to iframe-local coordinates.
-        const el = doc.elementFromPoint(clientX - rect.left, clientY - rect.top);
-        if (!el) break;
-
-        // Handle in-book anchor navigation.
-        const anchor = el.closest('a[href]');
-        if (anchor) {
-            const href = anchor.getAttribute('href');
-            if (href.startsWith('#')) navigateToId(href.slice(1));
-            else window.location.href = href;
-            return;
-        }
-
-        // Do not notify a tap for interactive elements.
-        const interactive = ['button', 'input', 'select', 'textarea',
-            '[role="button"]', '[role="link"]', '[onclick]', '[contenteditable]'];
-        if (interactive.some(s => el.closest(s))) return;
-        if (ch.el.contentWindow.getComputedStyle(el).cursor === 'pointer') return;
-
-        window.TapDetector?.notifyScreenTapped();
-        return;
-    }
-
-    // Tap landed outside all chapter iframes.
-    window.TapDetector?.notifyScreenTapped();
-}
-
 // ─── Private — iframe sizing ──────────────────────────────────────────────────
 
 /**
