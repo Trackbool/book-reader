@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// EPUB Paged Reader — iframe
+// EPUB Paged Reader — iframe edition
 //
 // Each chapter renders in its own <iframe>. While narrow (colWidth), CSS
 // columns overflow rightward in layout space, letting Range measure the total
@@ -19,12 +19,15 @@
 //   iframe owns that page.
 //
 // Touch handling:
-//   iframes do not bubble touch events to the parent. Each iframe's inline
-//   script calls window.parent._swipeTouchStart/Move/End directly (same-origin).
+//   A transparent overlay div in the parent document captures all touch events
+//   directly — no cross-iframe forwarding. This mirrors the Shadow DOM version
+//   and gives the same smooth drag performance.
 //
 // Progress format:
 //   { chapterId: string, nodeIndex: number, nodeOffset: number [0, 1) }
 // ─────────────────────────────────────────────────────────────────────────────
+
+// BLOCK_SELECTOR is declared in epub_base.js.
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -66,16 +69,7 @@ let lastProgress = null;
 /** Guards onResize against running before the initial content load completes. */
 let _contentReady = false;
 
-// ─── Swipe state ──────────────────────────────────────────────────────────────
 
-/** X coordinate where the current swipe gesture began. */
-let _swipeStartX    = 0;
-
-/** Timestamp (Date.now()) when the current swipe gesture began. */
-let _swipeStartTime = 0;
-
-/** Whether a swipe gesture is currently in progress. */
-let _swipeDragging  = false;
 
 // ─── Initialisation ──────────────────────────────────────────────────────────
 
@@ -275,8 +269,10 @@ async function _createChapter(raw) {
 /**
  * Builds the srcdoc string for a chapter iframe.
  *
- * The inline script forwards touch and click events from the sandboxed iframe
- * to the parent window, which owns all navigation state.
+ * The inline script handles anchor navigation and tap notifications for
+ * programmatic or accessibility-driven clicks that reach the iframe directly.
+ * Swipe gestures are captured by the parent's touch overlay and never arrive
+ * here as touch events.
  *
  * @param {{ id: string, html: string }} chapter
  * @returns {string}
@@ -309,35 +305,10 @@ html, body {
 <body>
 <div id="pager"><section id="${chapter.id}">${content}</section></div>
 <script>(function () {
-    var p = window.parent, sx = 0, sy = 0, st = 0;
+    var p = window.parent;
 
-    // ── Touch forwarding ─────────────────────────────────────────────────────
-    // iframes do not bubble touch events to the parent, so we forward them
-    // directly to the parent's swipe handlers.
-
-    document.addEventListener('touchstart', function (e) {
-        var t = e.touches[0];
-        sx = t.clientX;
-        sy = t.clientY;
-        st = Date.now();
-        p._swipeTouchStart(sx);
-    }, { passive: true });
-
-    document.addEventListener('touchmove', function (e) {
-        var t  = e.touches[0];
-        var dx = t.clientX - sx;
-        var dy = t.clientY - sy;
-        // Prevent vertical scroll when the gesture is predominantly horizontal.
-        if (Math.abs(dx) > Math.abs(dy)) e.preventDefault();
-        p._swipeTouchMove(t.clientX);
-    }, { passive: false });
-
-    document.addEventListener('touchend', function (e) {
-        p._swipeTouchEnd(e.changedTouches[0].clientX, Date.now() - st);
-    }, { passive: true });
-
-    // ── Click / tap handling ─────────────────────────────────────────────────
-
+    // Handle in-book anchor clicks and tap notifications for programmatic
+    // or accessibility-driven interactions that bypass the parent overlay.
     document.addEventListener('click', function (e) {
         if (e.defaultPrevented) return;
 
@@ -596,79 +567,129 @@ function _readColumnWidth() {
 // ─── Private — swipe gestures ─────────────────────────────────────────────────
 
 /**
- * Attaches fallback touch listeners to contentEl for touches that land outside
- * any iframe. In practice, touches hit an iframe and are forwarded via the
- * window.parent._swipeTouchStart/Move/End API below.
+ * Creates a full-viewport transparent overlay that captures all touch events
+ * directly in the parent context.
+ *
+ * This mirrors the Shadow DOM version's approach (listening on the host element)
+ * and avoids the cross-iframe forwarding that caused drag jitter. Touch events
+ * fire in the same JS context as the style.transform writes, with no async
+ * boundary in between.
+ *
+ * Taps (short, low-movement gestures) are forwarded to the iframe content
+ * underneath via _handleTap(), which replicates the anchor-navigation and
+ * TapDetector logic from the iframe's own click handler.
  */
 function _initSwipeGesture() {
-    contentEl.addEventListener('touchstart', e => {
-        _swipeTouchStart(e.touches[0].clientX);
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;';
+    document.body.appendChild(overlay);
+
+    let startX = 0, startY = 0, startTime = 0, dragging = false;
+
+    overlay.addEventListener('touchstart', e => {
+        const t = e.touches[0];
+        startX    = t.clientX;
+        startY    = t.clientY;
+        startTime = Date.now();
+        dragging  = true;
     }, { passive: true });
 
-    contentEl.addEventListener('touchmove', e => {
-        _swipeTouchMove(e.touches[0].clientX);
-    }, { passive: true });
+    overlay.addEventListener('touchmove', e => {
+        if (!dragging) return;
 
-    contentEl.addEventListener('touchend', e => {
-        _swipeTouchEnd(e.changedTouches[0].clientX, Date.now() - _swipeStartTime);
+        const t  = e.touches[0];
+        const dx = t.clientX - startX;
+        const dy = t.clientY - startY;
+
+        // Only intercept horizontal gestures; let vertical ones fall through.
+        if (Math.abs(dx) <= Math.abs(dy)) return;
+        e.preventDefault();
+
+        const atStart = dx > 0 && currentPage === 0;
+        const atEnd   = dx < 0 && currentPage === totalPages - 1;
+        if (atStart || atEnd) return;
+
+        chapterContainer.style.transition = 'none';
+        chapterContainer.style.transform  =
+            `translateX(${-currentPage * colWidth + dx}px)`;
+    }, { passive: false });
+
+    overlay.addEventListener('touchend', e => {
+        if (!dragging) return;
+        dragging = false;
+
+        const t       = e.changedTouches[0];
+        const dx      = t.clientX - startX;
+        const dy      = t.clientY - startY;
+        const elapsed = Date.now() - startTime;
+
+        // Tap: small movement and short duration — forward to iframe content.
+        if (Math.hypot(dx, dy) < 10 && elapsed < 250) {
+            _handleTap(t.clientX, t.clientY);
+            return;
+        }
+
+        // Swipe: commit to next/previous page or snap back.
+        const velocity = Math.abs(dx) / Math.max(1, elapsed);
+        const passes   = Math.abs(dx) > colWidth * SWIPE_THRESHOLD || velocity > SWIPE_VELOCITY;
+
+        chapterContainer.style.transition = 'transform .3s ease';
+
+        if      (dx < 0 && passes && currentPage < totalPages - 1) goToPage(currentPage + 1);
+        else if (dx > 0 && passes && currentPage > 0)               goToPage(currentPage - 1);
+        else                                                         goToPage(currentPage);
+
+        setTimeout(() => { chapterContainer.style.transition = 'none'; }, 300);
     }, { passive: true });
 }
 
 /**
- * Called by each iframe's inline script when a touch gesture begins.
- * @param {number} x  clientX of the starting touch.
- */
-function _swipeTouchStart(x) {
-    _swipeStartX    = x;
-    _swipeStartTime = Date.now();
-    _swipeDragging  = true;
-}
-
-/**
- * Called by each iframe's inline script on every touch-move event.
- * Drags the container in real time, clamped at the first and last pages.
+ * Forwards a tap to the iframe content at (clientX, clientY).
  *
- * @param {number} x  Current clientX.
- */
-function _swipeTouchMove(x) {
-    if (!_swipeDragging) return;
-
-    const deltaX = x - _swipeStartX;
-    const atStart = deltaX > 0 && currentPage === 0;
-    const atEnd   = deltaX < 0 && currentPage === totalPages - 1;
-    if (atStart || atEnd) return;
-
-    chapterContainer.style.transition = 'none';
-    chapterContainer.style.transform  =
-        `translateX(${-currentPage * colWidth + deltaX}px)`;
-}
-
-/**
- * Called by each iframe's inline script when a touch gesture ends.
- * Commits to the next/previous page or snaps back based on distance and velocity.
+ * Mirrors the click handler injected into each iframe: checks for text
+ * selection, handles anchor navigation, and notifies TapDetector.
  *
- * @param {number} x        Final clientX.
- * @param {number} elapsed  Duration of the gesture in milliseconds.
+ * @param {number} clientX  Viewport X of the tap.
+ * @param {number} clientY  Viewport Y of the tap.
  */
-function _swipeTouchEnd(x, elapsed) {
-    if (!_swipeDragging) return;
-    _swipeDragging = false;
+function _handleTap(clientX, clientY) {
+    for (const ch of chapters) {
+        const rect = ch.el.getBoundingClientRect();
+        if (clientX < rect.left || clientX > rect.right ||
+            clientY < rect.top  || clientY > rect.bottom) continue;
 
-    const deltaX   = x - _swipeStartX;
-    const velocity = Math.abs(deltaX) / Math.max(1, elapsed);
-    const absD     = Math.abs(deltaX);
-    const passes   = absD > colWidth * SWIPE_THRESHOLD || velocity > SWIPE_VELOCITY;
+        const doc = ch.el.contentDocument;
+        if (!doc) break;
 
-    const goLeft  = deltaX < 0 && passes && currentPage < totalPages - 1;
-    const goRight = deltaX > 0 && passes && currentPage > 0;
+        // Ignore if the user just finished selecting text (e.g., long press).
+        const sel = doc.getSelection();
+        if (sel && sel.toString().length > 0) return;
 
-    chapterContainer.style.transition = 'transform .3s ease';
+        // Convert viewport coordinates to iframe-local coordinates.
+        const el = doc.elementFromPoint(clientX - rect.left, clientY - rect.top);
+        if (!el) break;
 
-    if      (goLeft)  goToPage(currentPage + 1);
-    else if (goRight) goToPage(currentPage - 1);
-    else              goToPage(currentPage);
+        // Handle in-book anchor navigation.
+        const anchor = el.closest('a[href]');
+        if (anchor) {
+            const href = anchor.getAttribute('href');
+            if (href.startsWith('#')) navigateToId(href.slice(1));
+            else window.location.href = href;
+            return;
+        }
 
-    setTimeout(() => { chapterContainer.style.transition = 'none'; }, 300);
+        // Do not notify a tap for interactive elements.
+        const interactive = ['button', 'input', 'select', 'textarea',
+            '[role="button"]', '[role="link"]', '[onclick]', '[contenteditable]'];
+        if (interactive.some(s => el.closest(s))) return;
+        if (ch.el.contentWindow.getComputedStyle(el).cursor === 'pointer') return;
+
+        window.TapDetector?.notifyScreenTapped();
+        return;
+    }
+
+    // Tap landed outside all chapter iframes.
+    window.TapDetector?.notifyScreenTapped();
 }
 
 // ─── Private — iframe sizing ──────────────────────────────────────────────────
