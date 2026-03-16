@@ -1,83 +1,56 @@
-:host{
-  display:block;
-  width:var(--vw,100vw);
-  height:var(--vh,100vh);
-  overflow:hidden;
-  opacity: 0;
+/*
+ * Paged chapter styles.
+ * Loaded inside each chapter <iframe> via <link> in the srcdoc.
+ * --vw and --vh are set on <html> by paged.js (_setIframeSizes) before layout.
+ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
 }
 
-#pager{
-  column-width:var(--vw,100vw);
-  column-gap:0;
-  column-fill:auto;
-  height:var(--vh,100vh);
-  overflow:visible;
-  padding-top:16px;
-  padding-bottom:16px;
-  will-change:transform;
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 20px;
+  line-height: 1.75;
+  color: #1c1c1e;
 }
 
-*{box-sizing:border-box;}
-
-section *{
-  margin:0;
-  padding:0;
-  font-size:revert;
-  max-width:100%;
+* { box-sizing: border-box; }
+#pager {
+  column-width: var(--vw);
+  column-gap: 0 !important;
+  column-fill: auto;
+  width: var(--vw);
+  height: var(--vh);
+  padding: 0;
+  margin: 0;
+  will-change: transform;
 }
 
-section{
-  break-before:column;
-  font-family:Georgia,'Times New Roman',serif;
-  font-size:20px;
-  line-height:1.75;
-  color:#1c1c1e;
-  margin-bottom:56px;
-  padding:24px 20px 48px;
+section img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(var(--vh) * 0.75);
+  object-fit: contain;
+  margin: 1em auto;
 }
 
-section p{margin-bottom:1em;text-indent:1.5em;}
-section p:first-child{text-indent:0;}
-
-section h1{margin:1.4em 0 .5em;font-size:1.6em;}
-section h2{margin:1.2em 0 .4em;font-size:1.35em;}
-section h3{margin:1em 0 .3em;font-size:1.15em;}
-section h4,section h5,section h6{margin:.8em 0 .2em;}
-
-section blockquote{
-  margin:1em 1.5em;
-  padding-left:1em;
-  border-left:3px solid #ccc;
+section {
+  padding: 24px 20px 48px;
 }
 
-section ul,section ol{
-  margin:.8em 0;
-  padding-left:2em;
-}
-
-section li{margin-bottom:.3em;}
-
-section img{
-  height:auto;
-  display:block;
-  margin:16px auto;
-}
-
-section a{color:#555;}
-
-section hr{
-  margin:2em 0;
-  border:none;
-  border-top:1px solid #ddd;
-}
-
-section pre,section code{
-  font-family:monospace;
-  font-size:.9em;
-}
-
-section pre{
-  margin:1em 0;
-  padding:1em;
-  overflow-x:auto;
+section img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(var(--vh) * 0.75);
+  object-fit: contain;
+  margin: 1em auto;
 }

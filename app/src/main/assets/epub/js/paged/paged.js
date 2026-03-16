@@ -1,129 +1,157 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// EPUB Paged Reader
+// EPUB Paged Reader — iframe
 //
-// Renders all book chapters inside a CSS-columns pager within a Shadow DOM.
-// Pages are navigated by swipe gesture or programmatic goToPage() calls.
+// Each chapter renders in its own <iframe>. While narrow (colWidth), CSS
+// columns overflow rightward in layout space, letting Range measure the total
+// width precisely. The iframe is then widened to pageCount × colWidth so every
+// column sits within its rendered viewport. The parent slides a container div
+// to reveal individual pages.
 //
-// Progress format (JSON):
-//   { chapterId: string, nodeIndex: number, nodeOffset: number (0–1) }
+// Sub-pixel precision:
+//   Page count is derived from Range.getBoundingClientRect() on the narrow
+//   iframe. colWidth = Math.floor(contentEl.width) for consistent integer CSS
+//   pixels that match the Range measurement.
 //
-//   nodeOffset is the fractional position within the anchor node's horizontal
-//   extent (in CSS-column layout nodes flow left-to-right across columns):
-//     0   = current page is the one where the node starts
-//     0.5 = current page starts halfway through the node's width
-//     ~1  = current page is at the very end of the node (stored as 0.999999)
+// Cross-chapter pagination:
+//   Chapters are laid out consecutively. Global page N maps to the chapter
+//   where chapter.startPage ≤ N < nextChapter.startPage. A translateX of
+//   −N × colWidth on the container exposes the correct column from whichever
+//   iframe owns that page.
 //
-//   Storing a fraction instead of a page count makes the position stable
-//   across font-size changes: a node spanning 2 pages at small font may span
-//   4 pages at large font. A fixed pageOffset would overshoot; nodeOffset
-//   always means "this fraction into the node" regardless of how many pages
-//   it currently occupies.
+// Touch handling:
+//   iframes do not bubble touch events to the parent. Each iframe's inline
+//   script calls window.parent._swipeTouchStart/Move/End directly (same-origin).
 //
-//   This mirrors the scroll reader's nodeOffset, keeping the JSON compatible
-//   across both reading modes.
-//
-// Bridge interface:
-//   bridge.onContentReady()
-//   bridge.onPageChanged(currentPage: number, totalPages: number)
-//   bridge.onPagesCalculated(totalPages: number)
-//   bridge.onProgressChanged(globalProgress: number, progressJson: string)
+// Progress format:
+//   { chapterId: string, nodeIndex: number, nodeOffset: number [0, 1) }
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Reference to the Shadow Root that hosts the #pager div.
-let shadowRoot;
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-// Reference to #pager div
-let pager;
+/** Minimum swipe distance as a fraction of colWidth to trigger a page turn. */
+const SWIPE_THRESHOLD = 0.20;
 
-// Cached column width. Invalidated on resize to avoid stale measurements.
-let cachedColumnWidth = null;
+/** Minimum swipe velocity (px/ms) to trigger a page turn regardless of distance. */
+const SWIPE_VELOCITY = 0.30;
 
-// Cached section data built once after content loads. Each entry is:
-//   { id: string, el: HTMLElement, nodes: Array<{ el: Element, startPage: number, pageCount: number, endPage: number }> }
-// Avoids repeated querySelectorAll calls and DOM geometry reads on the hot navigation path.
-let cachedSections = [];
+// ─── State ────────────────────────────────────────────────────────────────────
 
-// 0-based index of the page currently shown.
+/** Outer overflow-hidden viewport container. */
+let contentEl;
+
+/** Full-width strip translated left/right to expose individual pages. */
+let chapterContainer;
+
+/**
+ * Ordered list of loaded chapter descriptors.
+ * @type {Array<{
+ *   id: string,
+ *   el: HTMLIFrameElement,
+ *   pageCount: number,
+ *   startPage: number,
+ *   nodes: Array<{ el: Element, startPage: number, pageCount: number, endPage: number }>
+ * }>}
+ */
+let chapters = [];
+
 let currentPage = 0;
+let totalPages  = 0;
 
-// Total number of CSS-column pages. Calculated after layout is stable.
-let totalPages = 0;
+/** CSS-pixel width of one column / page. Always equals Math.floor(contentEl.width). */
+let colWidth = 0;
 
-// Stores the last emitted progress so resize can restore from it without
-// re-searching the DOM.
+/** Last emitted progress snapshot, used to restore position after resize. */
 let lastProgress = null;
+
+/** Guards onResize against running before the initial content load completes. */
+let _contentReady = false;
+
+// ─── Swipe state ──────────────────────────────────────────────────────────────
+
+/** X coordinate where the current swipe gesture began. */
+let _swipeStartX    = 0;
+
+/** Timestamp (Date.now()) when the current swipe gesture began. */
+let _swipeStartTime = 0;
+
+/** Whether a swipe gesture is currently in progress. */
+let _swipeDragging  = false;
 
 // ─── Initialisation ──────────────────────────────────────────────────────────
 
 function init() {
-    _initShadow();
-    setupNavigationHandler(shadowRoot);
-    setupTapDetector(shadowRoot);
+    contentEl        = document.getElementById('content');
+    chapterContainer = document.getElementById('chapter-container');
+    colWidth         = _readColumnWidth();
+    _initSwipeGesture();
+    setupTapDetector(); // epub_base.js — attaches to the parent document
 }
 
 document.addEventListener('DOMContentLoaded', init);
 
-// ─── Content loading ─────────────────────────────────────────────────────────
+// ─── Public API ───────────────────────────────────────────────────────────────
 
-// Entry point called by Android once the WebView has finished loading the
-// reader HTML. Injects all chapters, waits for assets, then either restores
-// a previous reading position or starts from page 0.
-//
-// chaptersJson — JSON array of { id: string, html: string (base64) }
-// progressJson — optional JSON object { chapterId, nodeIndex, nodeOffset }
-async function loadContent(chaptersJson, progressJson = "") {
-    const chapters = JSON.parse(chaptersJson);
+/**
+ * Loads all chapters, measures their page counts, and navigates to the saved
+ * progress position (or page 0 when no progress is provided).
+ *
+ * @param {string} chaptersJson  JSON array of raw chapter descriptors.
+ * @param {string} [progressJson] Serialised progress object; omit to start at page 0.
+ */
+async function loadContent(chaptersJson, progressJson = '') {
+    _contentReady = false;
 
-    chapters.forEach(ch => {
-        const section = document.createElement('section');
-        section.id = ch.id;
-        section.innerHTML = decodeB64(ch.html);
-        pager.appendChild(section);
-    });
+    const raw = JSON.parse(chaptersJson);
 
-    cachedColumnWidth = null;
-    await waitForImagesAndFonts(shadowRoot);
+    // Create, load, and measure every iframe concurrently.
+    chapters = await Promise.all(raw.map(_createChapter));
 
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            setTimeout(() => {
-                _buildSectionCache();
-                calculateTotalPages();
+    // Assign consecutive startPage offsets and position iframes.
+    _layoutChapters();
 
-                if (progressJson) {
-                    const { chapterId, nodeIndex, nodeOffset = 0 } = JSON.parse(progressJson);
-                    _restoreProgress(chapterId, nodeIndex, nodeOffset);
-                }
+    // Allow one paint after positioning before reading node geometry.
+    await _nextFrame();
 
-                setTimeout(() => {
-                    shadowRoot.host.style.opacity = '1';
-                    bridge.onContentReady();
-                }, 0);
-            }, 50);
-        });
-    });
+    // Build per-chapter node caches with global-page coordinates.
+    _buildSectionCache();
+
+    bridge.onPagesCalculated(totalPages);
+
+    if (progressJson) {
+        const { chapterId, nodeIndex, nodeOffset = 0 } = JSON.parse(progressJson);
+        _restoreProgress(chapterId, nodeIndex, nodeOffset);
+    } else {
+        goToPage(0, true, false);
+    }
+
+    _contentReady = true;
+
+    setTimeout(() => {
+        contentEl.style.opacity = '1';
+        bridge.onContentReady();
+    }, 0);
 }
 
-// ─── Page navigation ─────────────────────────────────────────────────────────
-
-// Translates the pager to show `page` and notifies Android.
-// Also emits a progress update so Android can persist the new position.
+/**
+ * Slides the container to reveal the given page and notifies the bridge.
+ *
+ * @param {number}  page       Target page index (clamped to [0, totalPages − 1]).
+ * @param {boolean} forceEmit  Emit progress even when the page has not changed.
+ * @param {boolean} animate    Apply a CSS transition (skipped for jumps > 2 pages).
+ */
 function goToPage(page, forceEmit = false, animate = true) {
-    if (!pager) return;
+    if (totalPages === 0) return;
 
-    const newPage  = Math.max(0, Math.min(page, totalPages - 1));
-    const colWidth = _getRealColumnWidth();
+    const newPage   = Math.max(0, Math.min(page, totalPages - 1));
+    const doAnimate = animate && Math.abs(newPage - currentPage) <= 2;
 
-    const pageDifference = Math.abs(newPage - currentPage);
-    const shouldAnimate = animate && (pageDifference <= 2);
+    chapterContainer.style.transition = doAnimate ? 'transform .3s ease' : 'none';
+    chapterContainer.style.transform  = `translateX(${-newPage * colWidth}px)`;
 
-    pager.style.transition = shouldAnimate ? 'transform .3s ease' : 'none';
-    pager.style.transform = `translateX(${-newPage * colWidth}px)`;
+    const changed = newPage !== currentPage;
+    currentPage   = newPage;
 
-    const pageChanged = newPage !== currentPage;
-    currentPage = newPage;
-
-    if (pageChanged) {
+    if (changed) {
         bridge.onPageChanged(currentPage + 1, totalPages);
         _emitProgress();
     } else if (forceEmit) {
@@ -131,224 +159,351 @@ function goToPage(page, forceEmit = false, animate = true) {
     }
 }
 
-// Navigates to the element with the given ID by computing its page index.
+/**
+ * Searches every chapter iframe for an element with the given id and
+ * navigates to its page.
+ *
+ * @param {string} id  The HTML id to locate.
+ */
 function navigateToId(id) {
-    const el = shadowRoot.getElementById(id);
-    if (!pager || !el) return;
-
-    const colWidth = _getRealColumnWidth();
-    const pagerRect = pager.getBoundingClientRect();
-    const elRect = el.getBoundingClientRect();
-
-    const relativeOffset = elRect.left - pagerRect.left;
-
-    const page = Math.floor((relativeOffset + 2) / colWidth);
-    goToPage(page);
+    for (const ch of chapters) {
+        const el = ch.el.contentDocument?.getElementById(id);
+        if (!el) continue;
+        goToPage(ch.startPage + _getNodeLocalPage(el, ch));
+        return;
+    }
 }
 
-// ─── Page count ──────────────────────────────────────────────────────────────
-
+/** Re-reports the current total page count to the bridge. */
 function calculateTotalPages() {
-    totalPages = _getTotalPages();
     bridge.onPagesCalculated(totalPages);
 }
 
-// ─── Resize recovery ─────────────────────────────────────────────────────────
+/**
+ * Recalculates page counts and restores the saved position after a viewport
+ * resize (e.g. orientation change or font-size adjustment).
+ */
+async function onResize() {
+    if (!_contentReady || chapters.length === 0) return;
 
-function onResize() {
-    _updateSizes();
-    _recalculateAfterResize();
+    colWidth = _readColumnWidth();
+
+    // Reset every iframe to the new viewport width and update CSS variables.
+    for (const ch of chapters) {
+        ch.el.style.width = `${colWidth}px`;
+        _setIframeSizes(ch.el);
+    }
+
+    // Give the layout engine time to reflow before measuring.
+    await _nextFrame();
+    await _nextFrame();
+    await new Promise(r => setTimeout(r, 50));
+
+    // Re-measure and re-widen each iframe.
+    for (const ch of chapters) {
+        ch.pageCount      = _measureIframePageCount(ch.el);
+        ch.el.style.width = `${ch.pageCount * colWidth}px`;
+    }
+
+    await _nextFrame();
+
+    _layoutChapters();
+    _buildSectionCache();
+
+    bridge.onPagesCalculated(totalPages);
+
+    if (lastProgress) {
+        const { chapterId, nodeIndex, nodeOffset } = lastProgress;
+        _restoreProgress(chapterId, nodeIndex, nodeOffset);
+    } else {
+        goToPage(Math.min(currentPage, totalPages - 1));
+    }
 }
 
-// ─── Private methods ─────────────────────────────────────────────────────────
+// ─── Private — iframe creation ────────────────────────────────────────────────
 
-function _initShadow() {
-    const host = document.getElementById('content');
-    shadowRoot = host.attachShadow({ mode: 'open' });
+/**
+ * Creates and loads an iframe for a single chapter, waits for images and
+ * fonts, measures the page count, and widens the iframe to fit all columns.
+ *
+ * @param {{ id: string, html: string }} raw  Raw chapter descriptor.
+ * @returns {Promise<Object>} Resolved chapter descriptor with pageCount set.
+ */
+async function _createChapter(raw) {
+    const iframe = document.createElement('iframe');
 
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'epub/css/paged/paged.css';
-    shadowRoot.appendChild(link);
+    // Start at viewport dimensions; widened to pageCount × colWidth after measurement.
+    iframe.style.cssText =
+        `position:absolute;top:0;left:0;` +
+        `width:${colWidth}px;height:${window.innerHeight}px;` +
+        `border:none;padding:0;margin:0;display:block;`;
+    iframe.setAttribute('scrolling', 'no');
 
-    pager = document.createElement('div');
-    pager.id = 'pager';
-    shadowRoot.appendChild(pager);
+    chapterContainer.appendChild(iframe);
 
-    _updateSizes();
-    _initSwipeGesture();
+    await new Promise(resolve => {
+        iframe.addEventListener('load', resolve, { once: true });
+        iframe.srcdoc = _buildSrcdoc(raw);
+    });
+
+    const doc = iframe.contentDocument;
+
+    // Inject CSS dimension variables before any layout measurement.
+    _setIframeSizes(iframe);
+
+    // Wait for images and fonts to load so layout measurements are accurate.
+    await Promise.all([
+        waitForImages(doc),
+        doc.fonts?.ready ?? Promise.resolve(),
+    ]);
+
+    // Two extra frames for the multi-column layout to fully stabilise.
+    await _nextFrame();
+    await _nextFrame();
+
+    const pageCount = _measureIframePageCount(iframe);
+
+    // Widen the iframe so every column sits inside its rendered viewport.
+    // The parent's translateX then exposes each column by sliding the container.
+    iframe.style.width = `${pageCount * colWidth}px`;
+
+    await _nextFrame();
+
+    return { id: raw.id, el: iframe, pageCount, startPage: 0, nodes: [] };
 }
 
-function _updateSizes() {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    shadowRoot.host.style.setProperty('--vw', `${w}px`);
-    shadowRoot.host.style.setProperty('--vh', `${h}px`);
+/**
+ * Builds the srcdoc string for a chapter iframe.
+ *
+ * The inline script forwards touch and click events from the sandboxed iframe
+ * to the parent window, which owns all navigation state.
+ *
+ * @param {{ id: string, html: string }} chapter
+ * @returns {string}
+ */
+function _buildSrcdoc(chapter) {
+    const base    = new URL('epub/', window.location.href).href;
+    const content = decodeB64(chapter.html);
+
+    // Split '</script>' to prevent premature tag closure inside this .js source.
+    const closeScript = '<' + '/script>';
+
+    return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<base href="${base}">
+<link rel="stylesheet" href="css/paged/paged.css">
+<style>
+html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    background: transparent;
 }
+* { box-sizing: border-box; }
+</style>
+</head>
+<body>
+<div id="pager"><section id="${chapter.id}">${content}</section></div>
+<script>(function () {
+    var p = window.parent, sx = 0, sy = 0, st = 0;
 
-function _initSwipeGesture() {
-    const host = shadowRoot.host;
-    let startX = 0;
-    let startTime = 0;
-    let dragging = false;
+    // ── Touch forwarding ─────────────────────────────────────────────────────
+    // iframes do not bubble touch events to the parent, so we forward them
+    // directly to the parent's swipe handlers.
 
-    const THRESHOLD = 0.2;
-    const VELOCITY_THRESHOLD = 0.3;
-
-    host.addEventListener('touchstart', (e) => {
-        startX = e.touches[0].clientX;
-        startTime = Date.now();
-        dragging = true;
+    document.addEventListener('touchstart', function (e) {
+        var t = e.touches[0];
+        sx = t.clientX;
+        sy = t.clientY;
+        st = Date.now();
+        p._swipeTouchStart(sx);
     }, { passive: true });
 
-    host.addEventListener('touchmove', (e) => {
-        if (!dragging) return;
+    document.addEventListener('touchmove', function (e) {
+        var t  = e.touches[0];
+        var dx = t.clientX - sx;
+        var dy = t.clientY - sy;
+        // Prevent vertical scroll when the gesture is predominantly horizontal.
+        if (Math.abs(dx) > Math.abs(dy)) e.preventDefault();
+        p._swipeTouchMove(t.clientX);
+    }, { passive: false });
 
-        const colWidth = _getRealColumnWidth();
-        const deltaX = e.touches[0].clientX - startX;
-
-        if ((deltaX > 0 && currentPage === 0) ||
-            (deltaX < 0 && currentPage === totalPages - 1)) return;
-
-        pager.style.transition = 'none';
-        pager.style.transform = `translateX(${-currentPage * colWidth + deltaX}px)`;
+    document.addEventListener('touchend', function (e) {
+        p._swipeTouchEnd(e.changedTouches[0].clientX, Date.now() - st);
     }, { passive: true });
 
-    host.addEventListener('touchend', (e) => {
-        if (!dragging) return;
-        dragging = false;
+    // ── Click / tap handling ─────────────────────────────────────────────────
 
-        const colWidth = _getRealColumnWidth();
-        const deltaX = e.changedTouches[0].clientX - startX;
-        const velocity = Math.abs(deltaX) / (Date.now() - startTime);
+    document.addEventListener('click', function (e) {
+        if (e.defaultPrevented) return;
 
-        const isSwipeLeft  = deltaX < 0 && (Math.abs(deltaX) > colWidth * THRESHOLD || velocity > VELOCITY_THRESHOLD);
-        const isSwipeRight = deltaX > 0 && (Math.abs(deltaX) > colWidth * THRESHOLD || velocity > VELOCITY_THRESHOLD);
+        // Ignore clicks that follow text selection.
+        var sel = document.getSelection();
+        if (sel && sel.toString().length > 0) return;
 
-        pager.style.transition = 'transform .3s ease';
+        // Handle in-book anchor navigation.
+        var a = e.target.closest('a[href]');
+        if (a) {
+            e.preventDefault();
+            var h = a.getAttribute('href');
+            if (h.charAt(0) === '#') p.navigateToId(h.slice(1));
+            else p.location.href = h;
+            return;
+        }
 
-        if      (isSwipeLeft  && currentPage < totalPages - 1) goToPage(currentPage + 1);
-        else if (isSwipeRight && currentPage > 0)              goToPage(currentPage - 1);
-        else                                                   goToPage(currentPage);
+        // Do not fire a tap notification for interactive elements.
+        var ignored = [
+            'button', 'input', 'select', 'textarea',
+            '[role="button"]', '[role="link"]', '[onclick]', '[contenteditable]',
+        ];
+        if (ignored.some(function (s) { return e.target.closest(s); })) return;
+        if (window.getComputedStyle(e.target).cursor === 'pointer') return;
 
-        setTimeout(() => { pager.style.transition = 'none'; }, 300);
-    }, { passive: true });
+        p.window.TapDetector && p.window.TapDetector.notifyScreenTapped();
+    });
+})();${closeScript}
+</body>
+</html>`;
 }
 
-// Builds cachedSections from the live DOM. Called once after content loads
-// and again after a resize only if the section structure could have changed.
-// Node geometry (startPage, pageCount, endPage) is computed here once and
-// cached so _emitProgress() never needs to read the DOM on the hot path.
-function _buildSectionCache() {
-    cachedSections = [...pager.querySelectorAll('section[id]')].map(section => ({
-        id: section.id,
-        el: section,
-        nodes: [...section.querySelectorAll(BLOCK_SELECTOR)].map(node => {
-            const startPage = _getNodeStartPage(node);
-            const pageCount = _getNodePageCount(node);
-            return { el: node, startPage, pageCount, endPage: startPage + pageCount - 1 };
-        })
-    }));
+// ─── Private — layout ─────────────────────────────────────────────────────────
+
+/**
+ * Assigns consecutive startPage offsets to chapters and positions their
+ * iframes left-to-right using exact integer-page arithmetic.
+ *
+ * Must be called after every chapter's pageCount is up to date.
+ */
+function _layoutChapters() {
+    let offsetPages = 0;
+    totalPages = 0;
+
+    for (const ch of chapters) {
+        ch.startPage      = offsetPages;
+        ch.el.style.left  = `${offsetPages * colWidth}px`;
+        offsetPages      += ch.pageCount;
+        totalPages       += ch.pageCount;
+    }
 }
 
-function _getTotalPages() {
-    if (!pager || !pager.firstElementChild) return 0;
+/**
+ * Counts the CSS-column pages in `iframe` using Range.getBoundingClientRect().
+ *
+ * The iframe must be at colWidth when this is called. CSS columns overflow
+ * rightward in layout space; the Range captures their full extent with
+ * sub-pixel precision. The −0.1 guard prevents float-rounding from inflating
+ * the count by one.
+ *
+ * @param {HTMLIFrameElement} iframe
+ * @returns {number}
+ */
+function _measureIframePageCount(iframe) {
+    const doc   = iframe.contentDocument;
+    const pager = doc?.getElementById('pager');
+    if (!pager?.firstElementChild) return 1;
 
-    const colWidth = _getRealColumnWidth();
-
-    const range = document.createRange();
+    const range = doc.createRange();
     range.selectNodeContents(pager);
 
-    const rects = range.getBoundingClientRect();
-    const preciseFullWidth = rects.width;
-    const total = Math.ceil((preciseFullWidth - 0.1) / colWidth);
-
-    return Math.max(1, total);
+    const rect = range.getBoundingClientRect();
+    return Math.max(1, Math.ceil((rect.width - 0.1) / colWidth));
 }
 
-// ─── Column width helper ──────────────────────────────────────────────────────
+// ─── Private — section / node cache ──────────────────────────────────────────
 
-function _getRealColumnWidth() {
-    if (cachedColumnWidth) return cachedColumnWidth;
+/**
+ * Populates ch.nodes for every chapter with global-page coordinates.
+ *
+ * Must be called after _layoutChapters() has set ch.startPage on every chapter
+ * and after the iframes have been widened so node positions are stable.
+ */
+function _buildSectionCache() {
+    for (const ch of chapters) {
+        const section = ch.el.contentDocument?.getElementById(ch.id);
+        if (!section) { ch.nodes = []; continue; }
 
-    const width = pager.getBoundingClientRect().width;
-    cachedColumnWidth = width > 0
-        ? width
-        : parseFloat(shadowRoot.host.style.getPropertyValue('--vw'));
-
-    return cachedColumnWidth;
+        ch.nodes = [...section.querySelectorAll(BLOCK_SELECTOR)].map(node => {
+            const localPage = _getNodeLocalPage(node, ch);
+            const pageCount = _getNodePageCount(node);
+            return {
+                el:        node,
+                startPage: ch.startPage + localPage,
+                pageCount,
+                endPage:   ch.startPage + localPage + pageCount - 1,
+            };
+        });
+    }
 }
 
-// ─── Node geometry helpers ────────────────────────────────────────────────────
+/**
+ * Returns the 0-based page index within the chapter on which `node` starts.
+ *
+ * Because navigation is driven entirely by the parent container's translateX,
+ * the iframe itself is never translated. getBoundingClientRect() coordinates
+ * are therefore in the iframe's own layout space — no correction is needed.
+ *
+ * @param {Element} node
+ * @param {Object}  ch   Chapter descriptor.
+ * @returns {number}
+ */
+function _getNodeLocalPage(node, ch) {
+    const doc   = ch.el.contentDocument;
+    const pager = doc.getElementById('pager');
 
-// Returns the 0-based page index on which `node` starts.
-//
-// Uses offsetLeft traversal instead of getBoundingClientRect() because the
-// pager is shifted with translateX: rects are viewport-relative and would be
-// wrong when the pager is not at position 0. offsetLeft is always relative to
-// the un-transformed layout.
-function _getNodeStartPage(node) {
-    const colWidth = _getRealColumnWidth();
+    const pagerLeft = pager.getBoundingClientRect().left;
+    const nodeLeft  = node.getBoundingClientRect().left;
 
-    const pagerRect = pager.getBoundingClientRect();
-    const nodeRect  = node.getBoundingClientRect();
-    const absoluteOffset = nodeRect.left - pagerRect.left + currentPage * colWidth;
-
-    return Math.floor(absoluteOffset / colWidth);
+    return Math.max(0, Math.floor((nodeLeft - pagerLeft) / colWidth));
 }
 
-// Returns the number of pages the node spans (minimum 1).
-//
-// In CSS multi-column layout, a block element's offsetWidth is its total
-// horizontal extent across all the columns it occupies. Dividing by colWidth
-// gives the page count; ceil counts a partial last page as a full page.
+/**
+ * Returns the number of pages a node spans.
+ *
+ * In CSS multi-column layout the bounding rect width of a fragmented block
+ * equals its total horizontal extent across all occupied columns
+ * (pageCount × colWidth for a node spanning multiple columns).
+ *
+ * @param {Element} node
+ * @returns {number}
+ */
 function _getNodePageCount(node) {
-    const colWidth = _getRealColumnWidth();
-    const width    = node.getBoundingClientRect().width;
-    return Math.max(1, Math.ceil(width / colWidth));
+    return Math.max(1, Math.ceil(node.getBoundingClientRect().width / colWidth));
 }
 
-// ─── Progress — save ─────────────────────────────────────────────────────────
+// ─── Private — progress ──────────────────────────────────────────────────────
 
-// Finds the anchor node for `currentPage` and reports progress to Android.
-//
-// Sections are scanned in order. For each section:
-//   - If the entire section ends before currentPage, it is skipped in O(1)
-//     and its last node is kept as the running best candidate (anchor fallback).
-//   - If the entire section starts after currentPage, the search stops.
-//   - Otherwise a binary search finds the last node with startPage <= currentPage.
-//
-// All geometry (startPage, pageCount, endPage) is read from cachedSections,
-// never from the DOM.
-//
-// If the found node spans currentPage:
-//   nodeOffset = (currentPage - startPage) / pageCount   ∈ [0, 1)
-//
-// nodeOffset is a fraction of the node's own span, so it stays meaningful
-// after a font-size change that alters pageCount:
-//   small font → node spans 2 pages, saved nodeOffset = 0.5 → page 1 of 2
-//   large font → node spans 4 pages, restored nodeOffset = 0.5 → page 2 of 4
+/**
+ * Locates the anchor node for currentPage and calls _reportProgress.
+ *
+ * All node geometry is read from the cached ch.nodes (global coordinates),
+ * never from the live DOM on the hot path. When currentPage falls in a blank
+ * gap between chapters the fallback anchor is the last node of the preceding
+ * chapter.
+ */
 function _emitProgress() {
-    if (!pager) return;
-
-    const sections = cachedSections;
-
-    let anchorChapterId  = sections[0]?.id ?? null;
+    let anchorChapterId  = chapters[0]?.id ?? null;
     let anchorNodeIndex  = 0;
-    let anchorNodeOffset = 0;
 
-    for (const section of sections) {
-        const nodes = section.nodes;
+    for (const ch of chapters) {
+        const nodes = ch.nodes;
         if (!nodes.length) continue;
 
-        if (nodes[nodes.length - 1].endPage < currentPage) {
-            anchorChapterId = section.id;
+        const lastNode = nodes[nodes.length - 1];
+
+        if (lastNode.endPage < currentPage) {
+            // The entire chapter precedes currentPage — keep as running best.
+            anchorChapterId = ch.id;
             anchorNodeIndex = nodes.length - 1;
             continue;
         }
 
         if (nodes[0].startPage > currentPage) break;
 
+        // Binary search: last node with startPage ≤ currentPage.
         let lo = 0, hi = nodes.length - 1, found = 0;
         while (lo <= hi) {
             const mid = (lo + hi) >> 1;
@@ -357,100 +512,189 @@ function _emitProgress() {
         }
 
         const { startPage, pageCount, endPage } = nodes[found];
-
         if (currentPage <= endPage) {
-            let nodeOffset = (currentPage - startPage) / pageCount;
-            nodeOffset = Math.max(0, Math.min(0.999999, nodeOffset));
-            _reportProgress(section.id, found, nodeOffset);
+            const offset = Math.min(0.999999,
+                Math.max(0, (currentPage - startPage) / pageCount));
+            _reportProgress(ch.id, found, offset);
             return;
         }
 
-        anchorChapterId = section.id;
+        anchorChapterId = ch.id;
         anchorNodeIndex = found;
     }
 
-    // Fallback: currentPage has no node starting or spanning it (blank gap).
-    // Report the last node seen before currentPage.
+    // Fallback: currentPage is in a gap — report the last node seen before it.
     if (anchorChapterId) {
-        const section = cachedSections.find(s => s.id === anchorChapterId);
-        const lastNode = section.nodes[anchorNodeIndex];
-
-        // Calculate actual offset even if it's >= 1
-        const { startPage, pageCount } = lastNode;
-        anchorNodeOffset = (currentPage - startPage) / pageCount;
-
-        _reportProgress(anchorChapterId, anchorNodeIndex, anchorNodeOffset);
+        const ch   = chapters.find(c => c.id === anchorChapterId);
+        const node = ch.nodes[anchorNodeIndex];
+        _reportProgress(
+            anchorChapterId,
+            anchorNodeIndex,
+            (currentPage - node.startPage) / node.pageCount,
+        );
     }
 }
 
+/**
+ * Serialises progress and forwards it to the bridge.
+ *
+ * @param {string} chapterId
+ * @param {number} nodeIndex
+ * @param {number} nodeOffset  Fraction [0, 1) within the node.
+ */
 function _reportProgress(chapterId, nodeIndex, nodeOffset) {
     const globalProgress = totalPages > 1
         ? currentPage / (totalPages - 1)
         : (currentPage > 0 ? 1 : 0);
 
-    const documentPositionData = JSON.stringify({ chapterId, nodeIndex, nodeOffset });
-
     lastProgress = { chapterId, nodeIndex, nodeOffset };
-    bridge.onProgressChanged(globalProgress, chapterId, documentPositionData);
+    bridge.onProgressChanged(globalProgress, chapterId,
+        JSON.stringify({ chapterId, nodeIndex, nodeOffset }));
 }
 
-// ─── Progress — restore ──────────────────────────────────────────────────────
-
-// Navigates to the page described by { chapterId, nodeIndex, nodeOffset }.
-//
-// Inverse of _emitProgress():
-//   nodeStartPage = _getNodeStartPage(target)        — live layout
-//   nodePageCount = _getNodePageCount(target)        — live layout
-//   targetPage    = nodeStartPage + floor(nodeOffset * nodePageCount)
-//
-// Both measurements are taken from the current DOM, so the result is correct
-// regardless of whether the font size has changed since progress was saved.
+/**
+ * Navigates to the page corresponding to a previously saved progress object.
+ *
+ * @param {string} chapterId
+ * @param {number} nodeIndex
+ * @param {number} [nodeOffset=0]  Fraction [0, 1) within the node.
+ */
 function _restoreProgress(chapterId, nodeIndex, nodeOffset = 0) {
-    const section = cachedSections.find(s => s.id === chapterId);
+    const ch = chapters.find(c => c.id === chapterId);
+    if (!ch) { goToPage(0); return; }
 
-    if (!section) {
-        // Chapter no longer exists (book updated?); start from page 0.
-        goToPage(0);
-        return;
-    }
-
-    const nodes  = section.nodes;
-    const target = nodes[nodeIndex];
-
+    const target = ch.nodes[nodeIndex];
     if (!target) {
-        // nodeIndex out of range (chapter was shortened?).
-        // Land on the last available node of the chapter as a best-effort.
-        const lastNode = nodes[nodes.length - 1];
+        const lastNode = ch.nodes[ch.nodes.length - 1];
         if (lastNode) goToPage(lastNode.startPage);
         else          navigateToId(chapterId);
         return;
     }
 
-    const { startPage: nodeStartPage, pageCount: nodePageCount } = target;
+    const pageWithinNode = Math.max(0,
+        Math.floor(nodeOffset * target.pageCount + 1e-9));
 
-    const EPS = 1e-9;
-
-    // floor: land on the page that *starts* at nodeOffset within the node.
-    let pageIndexWithinNode = Math.floor(nodeOffset * nodePageCount + EPS);
-    pageIndexWithinNode = Math.max(0, pageIndexWithinNode);
-
-    const targetPage = nodeStartPage + pageIndexWithinNode;
-
-    goToPage(Math.min(targetPage, totalPages - 1), true, false);
+    goToPage(Math.min(target.startPage + pageWithinNode, totalPages - 1),
+        true, false);
 }
 
-// Called on every resize. currentPage is meaningless after a reflow because
-// the column count changes, so we re-derive the correct page from the cached
-// node anchor instead.
-function _recalculateAfterResize() {
-    cachedColumnWidth = null;
-    _buildSectionCache();
-    calculateTotalPages();
+/**
+ * Returns the integer CSS-pixel column width to use for all page calculations.
+ *
+ * Flooring to an integer prevents the rendering engine from making fractional
+ * decisions that would desynchronise CSS columns from the Range measurements.
+ *
+ * @returns {number}
+ */
+function _readColumnWidth() {
+    const width = contentEl
+        ? contentEl.getBoundingClientRect().width
+        : window.innerWidth;
+    return Math.floor(width);
+}
 
-    if (lastProgress) {
-        const { chapterId, nodeIndex, nodeOffset } = lastProgress;
-        _restoreProgress(chapterId, nodeIndex, nodeOffset);
-    } else {
-        goToPage(Math.min(currentPage, totalPages - 1));
+// ─── Private — swipe gestures ─────────────────────────────────────────────────
+
+/**
+ * Attaches fallback touch listeners to contentEl for touches that land outside
+ * any iframe. In practice, touches hit an iframe and are forwarded via the
+ * window.parent._swipeTouchStart/Move/End API below.
+ */
+function _initSwipeGesture() {
+    contentEl.addEventListener('touchstart', e => {
+        _swipeTouchStart(e.touches[0].clientX);
+    }, { passive: true });
+
+    contentEl.addEventListener('touchmove', e => {
+        _swipeTouchMove(e.touches[0].clientX);
+    }, { passive: true });
+
+    contentEl.addEventListener('touchend', e => {
+        _swipeTouchEnd(e.changedTouches[0].clientX, Date.now() - _swipeStartTime);
+    }, { passive: true });
+}
+
+/**
+ * Called by each iframe's inline script when a touch gesture begins.
+ * @param {number} x  clientX of the starting touch.
+ */
+function _swipeTouchStart(x) {
+    _swipeStartX    = x;
+    _swipeStartTime = Date.now();
+    _swipeDragging  = true;
+}
+
+/**
+ * Called by each iframe's inline script on every touch-move event.
+ * Drags the container in real time, clamped at the first and last pages.
+ *
+ * @param {number} x  Current clientX.
+ */
+function _swipeTouchMove(x) {
+    if (!_swipeDragging) return;
+
+    const deltaX = x - _swipeStartX;
+    const atStart = deltaX > 0 && currentPage === 0;
+    const atEnd   = deltaX < 0 && currentPage === totalPages - 1;
+    if (atStart || atEnd) return;
+
+    chapterContainer.style.transition = 'none';
+    chapterContainer.style.transform  =
+        `translateX(${-currentPage * colWidth + deltaX}px)`;
+}
+
+/**
+ * Called by each iframe's inline script when a touch gesture ends.
+ * Commits to the next/previous page or snaps back based on distance and velocity.
+ *
+ * @param {number} x        Final clientX.
+ * @param {number} elapsed  Duration of the gesture in milliseconds.
+ */
+function _swipeTouchEnd(x, elapsed) {
+    if (!_swipeDragging) return;
+    _swipeDragging = false;
+
+    const deltaX   = x - _swipeStartX;
+    const velocity = Math.abs(deltaX) / Math.max(1, elapsed);
+    const absD     = Math.abs(deltaX);
+    const passes   = absD > colWidth * SWIPE_THRESHOLD || velocity > SWIPE_VELOCITY;
+
+    const goLeft  = deltaX < 0 && passes && currentPage < totalPages - 1;
+    const goRight = deltaX > 0 && passes && currentPage > 0;
+
+    chapterContainer.style.transition = 'transform .3s ease';
+
+    if      (goLeft)  goToPage(currentPage + 1);
+    else if (goRight) goToPage(currentPage - 1);
+    else              goToPage(currentPage);
+
+    setTimeout(() => { chapterContainer.style.transition = 'none'; }, 300);
+}
+
+// ─── Private — iframe sizing ──────────────────────────────────────────────────
+
+/**
+ * Injects --vw and --vh CSS custom properties into the iframe's root element.
+ * paged.css uses these variables to set column-width and height on #pager.
+ *
+ * @param {HTMLIFrameElement} iframe
+ */
+function _setIframeSizes(iframe) {
+    const w    = _readColumnWidth();
+    const h    = window.innerHeight;
+    const root = iframe.contentDocument?.documentElement;
+
+    if (root) {
+        root.style.setProperty('--vw', `${w}px`);
+        root.style.setProperty('--vh', `${h}px`);
     }
+
+    iframe.style.height = `${h}px`;
+}
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
+
+/** Resolves on the next animation frame. */
+function _nextFrame() {
+    return new Promise(resolve => requestAnimationFrame(resolve));
 }

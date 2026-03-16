@@ -6,16 +6,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-          background: transparent;
-          word-wrap: break-word;
-          overflow: hidden;
-          overflow-wrap: break-word;
-          -webkit-text-size-adjust: 100%;
-          width: 100%;
-          height: 100%;
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: transparent;
         }
-        #content { display: block; width: 100%; height: 100%; }
+
+        /*
+         * #content: the visible viewport window.
+         * opacity:0 keeps it invisible during load; paged.js sets it to 1
+         * once content is ready (same behaviour as the old :host { opacity:0 }).
+         */
+        #content {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            opacity: 0;
+        }
+
+        /*
+         * #chapter-container: the wide strip that holds all chapter iframes
+         * side-by-side. Translated left/right by goToPage() to expose pages.
+         * Its natural width grows to accommodate absolutely-positioned iframes;
+         * overflow is clipped by #content.
+         */
+        #chapter-container {
+            position: absolute;
+            top: 0; left: 0;
+            height: 100%;
+            will-change: transform;
+        }
     </style>
 
     <script src="epub/js/epub_base.js"></script>
@@ -24,6 +48,8 @@
 </head>
 
 <body>
-<div id="content"></div>
+<div id="content">
+    <div id="chapter-container"></div>
+</div>
 </body>
 </html>
