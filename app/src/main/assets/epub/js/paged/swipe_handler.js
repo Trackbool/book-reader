@@ -5,12 +5,13 @@ const TRANSITION_DURATION    = 300;
 const TAP_MOVE_THRESHOLD     = 8;
 const YIELD_FOR_SELECTION_MS = 120;
 
+window.TRANSITION_PAGE = TRANSITION_PAGE;
+
 let getChapters;
 let getCurrentPage;
 let getTotalPages;
 let getColWidth;
 let goToPageFn;
-let _log = () => {};
 
 function initSwipeHandler(
     chaptersGetter, currentPageGetter, totalPagesGetter,
@@ -21,6 +22,7 @@ function initSwipeHandler(
     getTotalPages  = totalPagesGetter;
     getColWidth    = colWidthGetter;
     goToPageFn     = goToPageFnParam;
+
     _initSwipeGesture(chapterContainerEl);
 }
 
@@ -53,52 +55,14 @@ function _clearAllSelections() {
     }
 }
 
-function _getNodeLocalPage(node, ch) {
-    const doc   = ch.el.contentDocument;
-    const pager = doc.getElementById('pager');
-    return Math.max(0, Math.floor(
-        (node.getBoundingClientRect().left - pager.getBoundingClientRect().left)
-        / getColWidth()
-    ));
-}
-
 function _forwardTap(vx, vy) {
     const ch  = _currentChapter();
-    if (!ch?.el?.contentDocument) { _log('forwardTap: no chapter/doc'); return; }
-    const doc = ch.el.contentDocument;
+    if (!ch?.el?.contentDocument) return;
 
     const el = _elementAtViewport(vx, vy);
-    _log(`forwardTap vx=${vx.toFixed(0)} vy=${vy.toFixed(0)} el=${el?.tagName ?? 'null'} id="${el?.id}" class="${el?.className}"`);
-
     if (!el) return;
 
-    const link = el.closest('a[href]');
-    if (link) {
-        const href = link.getAttribute('href');
-        _log(`forwardTap → link href="${href}"`);
-        if (href.startsWith('#')) {
-            const targetId = href.slice(1);
-            for (const c of getChapters()) {
-                const target = c.el?.contentDocument?.getElementById(targetId);
-                if (target) {
-                    _log(`forwardTap → anchor found in chapter ${c.id}`);
-                    goToPageFn(c.startPage + _getNodeLocalPage(target, c));
-                    return;
-                }
-            }
-            _log(`forwardTap → anchor #${targetId} not found in any chapter`);
-            return;
-        }
-    }
-
-    const interactive = el.closest(
-        'a,button,[role="button"],label,input,select,textarea,video,audio,details,summary'
-    );
-    _log(`forwardTap → interactive=${interactive?.tagName ?? 'none'}, dispatching click on ${(interactive ?? el).tagName}`);
-
-    (interactive ?? el).dispatchEvent(
-        new MouseEvent('click', { bubbles: true, cancelable: true, view: doc.defaultView })
-    );
+    dispatchTap(el);
 }
 
 function _initSwipeGesture(chapterContainer) {
@@ -116,19 +80,14 @@ function _initSwipeGesture(chapterContainer) {
     let startY     = 0;
     let startTime  = 0;
     let yieldTimer = null;
-
-    _log = function(msg) {
-        bridge.onDebugInfo(
-            `[swipe] ${msg} | state=${state} | pe=${overlay.style.pointerEvents} | sel=${_hasActiveSelection()}`
-        );
-    };
+    let hadSelectionOnStart = false;
 
     function cancelYieldTimer() {
         if (yieldTimer) { clearTimeout(yieldTimer); yieldTimer = null; }
     }
 
-    function yield_() { overlay.style.pointerEvents = 'none'; _log('YIELD'); }
-    function reclaim() { overlay.style.pointerEvents = 'auto'; _log('RECLAIM'); }
+    function yield_() { overlay.style.pointerEvents = 'none'; }
+    function reclaim() { overlay.style.pointerEvents = 'auto'; }
 
     function snapToPage() {
         chapterContainer.style.transition = TRANSITION_PAGE;
@@ -137,7 +96,6 @@ function _initSwipeGesture(chapterContainer) {
     }
 
     overlay.addEventListener('touchstart', e => {
-        _log(`touchstart touches=${e.touches.length}`);
         if (e.touches.length !== 1) {
             cancelYieldTimer();
             if (state === 'horizontal') snapToPage();
@@ -151,18 +109,16 @@ function _initSwipeGesture(chapterContainer) {
         startY    = t.clientY;
         startTime = Date.now();
 
-        if (_hasActiveSelection()) {
-            _log('touchstart → clearing selection');
+        hadSelectionOnStart = _hasActiveSelection();
+        if (hadSelectionOnStart) {
             _clearAllSelections();
         }
 
         state = 'pending';
-        _log('touchstart → pending');
 
         yieldTimer = setTimeout(() => {
             yieldTimer = null;
             if (state !== 'pending') return;
-            _log('yieldTimer fired → yielded');
             state = 'yielded';
             yield_();
         }, YIELD_FOR_SELECTION_MS);
@@ -183,11 +139,9 @@ function _initSwipeGesture(chapterContainer) {
             if (absDx < TAP_MOVE_THRESHOLD && absDy < TAP_MOVE_THRESHOLD) return;
             cancelYieldTimer();
             if (absDx >= absDy) {
-                _log(`touchmove → horizontal dx=${dx.toFixed(0)}`);
                 reclaim();
                 state = 'horizontal';
             } else {
-                _log('touchmove → vertical');
                 state = 'yielded';
                 return;
             }
@@ -208,7 +162,6 @@ function _initSwipeGesture(chapterContainer) {
     }, { passive: false });
 
     overlay.addEventListener('touchend', e => {
-        _log(`touchend prevState=${state}`);
         cancelYieldTimer();
         const prevState = state;
         state = 'idle';
@@ -221,8 +174,7 @@ function _initSwipeGesture(chapterContainer) {
         if (prevState === 'pending') {
             if (e.changedTouches.length === 0) { reclaim(); return; }
             const t = e.changedTouches[0];
-            if (_hasActiveSelection()) {
-                _log('tap → clearing selection');
+            if (hadSelectionOnStart || _hasActiveSelection()) {
                 _clearAllSelections();
             } else {
                 _forwardTap(t.clientX, t.clientY);
@@ -257,7 +209,6 @@ function _initSwipeGesture(chapterContainer) {
     }, { passive: true });
 
     overlay.addEventListener('touchcancel', () => {
-        _log('touchcancel');
         cancelYieldTimer();
         if (state === 'horizontal') snapToPage();
         else reclaim();

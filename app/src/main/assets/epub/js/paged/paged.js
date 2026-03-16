@@ -77,7 +77,6 @@ function init() {
         chapterContainer,
         goToPage
     );
-    setupTapDetector(); // epub_base.js — attaches to the parent document
 }
 
 document.addEventListener('DOMContentLoaded', init);
@@ -138,7 +137,7 @@ function goToPage(page, forceEmit = false, animate = true) {
     const newPage   = Math.max(0, Math.min(page, totalPages - 1));
     const doAnimate = animate && Math.abs(newPage - currentPage) <= 2;
 
-    chapterContainer.style.transition = doAnimate ? TRANSITION_PAGE : 'none';
+    chapterContainer.style.transition = doAnimate ? window.TRANSITION_PAGE : 'none';
     chapterContainer.style.transform  = `translateX(${-newPage * colWidth}px)`;
 
     const changed = newPage !== currentPage;
@@ -289,7 +288,6 @@ function _buildSrcdoc(chapter) {
             </head>
             <body>
             <div id="pager"><section id="${chapter.id}">${content}</section></div>
-            <script src="js/paged/paged_iframe.js"></script>
             </body>
             </html>`;
 }

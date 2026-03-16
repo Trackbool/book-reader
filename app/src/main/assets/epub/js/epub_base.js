@@ -36,62 +36,56 @@ function waitForImagesAndFonts(root) {
 	]);
 }
 
-function setupNavigationHandler(shadowRoot) {
-	shadowRoot.addEventListener('click', (e) => {
-		const a = e.target.closest('a[href]');
-		if (!a) return;
+function isInteractiveElement(target) {
+	if (!(target instanceof Element)) return false;
 
-		e.preventDefault();
-		const href = a.getAttribute('href');
+	const interactiveSelectors = [
+		'a',
+		'button',
+		'input',
+		'select',
+		'textarea',
+		'audio',
+		'video',
+		'details',
+		'summary',
+		'label',
+		'object',
+		'[role="button"]',
+		'[role="link"]',
+		'[role="checkbox"]',
+		'[role="switch"]',
+		'[role="menuitem"]',
+		'[onclick]',
+		'[contenteditable]'
+	];
 
-		if (href.startsWith('#')) {
-			navigateToId(href.slice(1));
-		} else {
-			window.location.href = href;
-		}
-	});
+	if (interactiveSelectors.some(sel => target.matches(sel) || target.closest(sel))) {
+		return true;
+	}
+
+	const style = window.getComputedStyle(target);
+	return style.cursor === 'pointer';
 }
 
-function setupTapDetector() {
-	let hasSelection = false;
+function dispatchTap(el) {
+	const link = el.closest('a[href]');
+	if (link) {
+		const href = link.getAttribute('href');
 
-	document.addEventListener('selectionchange', () => {
-		const sel = document.getSelection();
-		hasSelection = sel && sel.toString().length > 0;
-	});
+		if (href && href.startsWith('#')) {
+			navigateToId(href.slice(1));
+		} else if (href) {
+			window.location.href = href;
+		}
 
-	document.addEventListener('click', (e) => {
-		// If any element in the chain already handled this tap, bail out
-		if (e.defaultPrevented) return;
+		return;
+	}
 
-		if (hasSelection) return;
+	if (isInteractiveElement(el)) {
+		el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+		return;
+	}
 
-		const ignored = [
-			'a',
-			'button',
-			'input',
-			'select',
-			'textarea',
-			'audio',        // epub3: inline audio controls
-			'video',        // epub3: inline video controls
-			'details',      // collapsible sections (epub3 / fixed-layout)
-			'summary',      // toggle for <details>
-			'label',        // form labels
-			'object',       // iBooks interactive widgets (application/x-ibooks+widget)
-			'[role="button"]',
-			'[role="link"]',
-			'[role="checkbox"]',
-			'[role="switch"]',
-			'[role="menuitem"]',
-			'[onclick]',
-			'[contenteditable]',
-		];
-
-		if (ignored.some(selector => e.target.closest(selector))) return;
-
-		const style = window.getComputedStyle(e.target);
-		if (style.cursor === 'pointer') return;
-
-		window.TapDetector?.notifyScreenTapped();
-	});
+	window.TapDetector?.notifyScreenTapped();
 }
