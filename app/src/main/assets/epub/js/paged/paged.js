@@ -534,10 +534,6 @@ function _readColumnWidth() {
  * and avoids the cross-iframe forwarding that caused drag jitter. Touch events
  * fire in the same JS context as the style.transform writes, with no async
  * boundary in between.
- *
- * Taps (short, low-movement gestures) are forwarded to the iframe content
- * underneath via _handleTap(), which replicates the anchor-navigation and
- * TapDetector logic from the iframe's own click handler.
  */
 function _initSwipeGesture() {
     const overlay = document.createElement('div');
@@ -582,12 +578,6 @@ function _initSwipeGesture() {
         const dx      = t.clientX - startX;
         const dy      = t.clientY - startY;
         const elapsed = Date.now() - startTime;
-
-        // Tap: small movement and short duration — forward to iframe content.
-        if (Math.hypot(dx, dy) < 10 && elapsed < 250) {
-            _handleTap(t.clientX, t.clientY);
-            return;
-        }
 
         // Swipe: commit to next/previous page or snap back.
         const velocity = Math.abs(dx) / Math.max(1, elapsed);
