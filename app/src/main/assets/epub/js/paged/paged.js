@@ -244,10 +244,7 @@ async function _createChapter(raw) {
     _setIframeSizes(iframe);
 
     // Wait for images and fonts to load so layout measurements are accurate.
-    await Promise.all([
-        waitForImages(doc),
-        doc.fonts?.ready ?? Promise.resolve(),
-    ]);
+    await waitForImagesAndFonts(doc)
 
     // Two extra frames for the multi-column layout to fully stabilise.
     await _nextFrame();
