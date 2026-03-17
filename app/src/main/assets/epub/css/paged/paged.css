@@ -44,7 +44,7 @@ section img {
 }
 
 section {
-  padding: 24px 20px 48px;
+  padding: 24px 20px 28px;
 
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
