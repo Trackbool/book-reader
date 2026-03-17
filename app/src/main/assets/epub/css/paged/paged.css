@@ -36,16 +36,26 @@ html, body {
   will-change: transform;
 }
 
-section img {
+section img, section svg, section figure,
+section picture, section canvas, section video {
   display: block;
   max-width: 100%;
   max-height: calc(var(--vh) * 0.75);
   object-fit: contain;
   margin: 1em auto;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+section figure img,
+section picture img {
+  width: 100%;
+  height: auto;
+  display: block;
 }
 
 section {
-  padding: 24px 20px 28px;
+  padding: 24px 20px 28px !important;
 
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
