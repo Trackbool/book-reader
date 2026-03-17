@@ -37,8 +37,6 @@ function waitForImagesAndFonts(root) {
 }
 
 function isInteractiveElement(target) {
-	if (!(target instanceof Element)) return false;
-
 	const interactiveSelectors = [
 		'a',
 		'button',
@@ -82,10 +80,7 @@ function dispatchTap(el) {
 		return;
 	}
 
-	if (isInteractiveElement(el)) {
-		el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-		return;
+	if (!isInteractiveElement(el)) {
+		window.TapDetector?.notifyScreenTapped();
 	}
-
-	window.TapDetector?.notifyScreenTapped();
 }
