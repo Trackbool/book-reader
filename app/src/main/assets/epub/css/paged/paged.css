@@ -45,12 +45,10 @@ section img {
 
 section {
   padding: 24px 20px 48px;
-}
 
-section img {
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+
+  break-inside: avoid-column;
   display: block;
-  max-width: 100%;
-  max-height: calc(var(--vh) * 0.75);
-  object-fit: contain;
-  margin: 1em auto;
 }
