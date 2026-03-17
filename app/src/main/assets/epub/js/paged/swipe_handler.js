@@ -13,6 +13,10 @@ let getTotalPages;
 let getColWidth;
 let goToPageFn;
 
+let overlay;
+
+let textSelected = false;
+
 function initSwipeHandler(
     chaptersGetter, currentPageGetter, totalPagesGetter,
     colWidthGetter, chapterContainerEl, goToPageFnParam
@@ -22,6 +26,15 @@ function initSwipeHandler(
     getTotalPages  = totalPagesGetter;
     getColWidth    = colWidthGetter;
     goToPageFn     = goToPageFnParam;
+
+    window.addEventListener('epub:selection:change', (e) => {
+        const { hasSelection } = e.detail;
+        textSelected = hasSelection;
+
+        if (overlay) {
+            overlay.style.pointerEvents = hasSelection ? 'none' : 'auto';
+        }
+    });
 
     _initSwipeGesture(chapterContainerEl);
 }
@@ -41,12 +54,8 @@ function _elementAtViewport(vx, vy) {
     return ch.el.contentDocument.elementFromPoint(vx + offsetX, vy);
 }
 
-function _hasActiveSelection() {
-    for (const ch of getChapters()) {
-        const sel = ch.el?.contentDocument?.getSelection();
-        if (sel?.toString().length > 0) return true;
-    }
-    return false;
+function _hasTextSelected() {
+    return textSelected;
 }
 
 function _clearAllSelections() {
@@ -67,7 +76,7 @@ function _forwardTap(vx, vy) {
 
 function _initSwipeGesture(chapterContainer) {
 
-    const overlay = document.createElement('div');
+    overlay = document.createElement('div');
     overlay.id = 'swipe-overlay';
     overlay.style.cssText =
         'position:fixed;top:0;left:0;width:100%;height:100%;' +
@@ -104,16 +113,17 @@ function _initSwipeGesture(chapterContainer) {
             return;
         }
 
+        hadSelectionOnStart = _hasTextSelected();
+        if (hadSelectionOnStart) {
+            state = 'yielded';
+            overlay.style.pointerEvents = 'none';
+            return;
+        }
+
         const t   = e.touches[0];
         startX    = t.clientX;
         startY    = t.clientY;
         startTime = Date.now();
-
-        hadSelectionOnStart = _hasActiveSelection();
-        if (hadSelectionOnStart) {
-            _clearAllSelections();
-        }
-
         state = 'pending';
 
         yieldTimer = setTimeout(() => {
@@ -167,14 +177,13 @@ function _initSwipeGesture(chapterContainer) {
         state = 'idle';
 
         if (prevState === 'yielded') {
-            reclaim();
             return;
         }
 
         if (prevState === 'pending') {
             if (e.changedTouches.length === 0) { reclaim(); return; }
             const t = e.changedTouches[0];
-            if (hadSelectionOnStart || _hasActiveSelection()) {
+            if (hadSelectionOnStart || _hasTextSelected()) {
                 _clearAllSelections();
             } else {
                 _forwardTap(t.clientX, t.clientY);

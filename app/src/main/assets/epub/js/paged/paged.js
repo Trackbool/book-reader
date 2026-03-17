@@ -240,6 +240,16 @@ async function _createChapter(raw) {
 
     const doc = iframe.contentDocument;
 
+    doc.addEventListener('selectionchange', () => {
+        const selection = doc.getSelection();
+        const hasText = selection.toString().length > 0;
+
+        // Custom event to notify swipe_handler.js
+        window.parent.dispatchEvent(new CustomEvent('epub:selection:change', {
+            detail: { hasSelection: hasText }
+        }));
+    });
+
     // Inject CSS dimension variables before any layout measurement.
     _setIframeSizes(iframe);
 
