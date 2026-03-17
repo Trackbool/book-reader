@@ -8,7 +8,7 @@ import android.webkit.WebView
 
 internal class EpubNavigationHandler(private val context: Context) {
 
-    fun handle(view: WebView, uri: Uri): Boolean {
+    fun handle(uri: Uri): Boolean {
         Log.d(TAG, "URL intercepted: $uri | scheme: ${uri.scheme}")
         return when (uri.scheme) {
             "epub" -> {

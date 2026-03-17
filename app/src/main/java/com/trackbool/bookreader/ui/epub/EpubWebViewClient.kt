@@ -29,5 +29,5 @@ internal class EpubWebViewClient(
     override fun shouldOverrideUrlLoading(
         view: WebView,
         request: WebResourceRequest,
-    ): Boolean = navigationHandler.handle(view, request.url)
+    ): Boolean = navigationHandler.handle(request.url)
 }
