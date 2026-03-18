@@ -216,7 +216,6 @@ async function _createChapter(raw) {
 
     const doc = iframe.contentDocument;
 
-    // Notificar al bridge sobre cambios de selección de texto
     doc.addEventListener('selectionchange', () => {
         const hasText = (doc.getSelection()?.toString().length ?? 0) > 0;
         window.dispatchEvent(new CustomEvent('epub:selection:change', {
@@ -224,7 +223,6 @@ async function _createChapter(raw) {
         }));
     });
 
-    // ── Clave: registrar swipe directamente en el iframe, sin overlay ──────────
     attachSwipeToIframe(iframe);
 
     _setIframeSizes(iframe);
