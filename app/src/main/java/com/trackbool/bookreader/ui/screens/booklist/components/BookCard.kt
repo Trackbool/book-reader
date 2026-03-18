@@ -242,7 +242,7 @@ private fun BookProgressTag(
         modifier = modifier.alpha(0.95f)
     ) {
         Text(
-            text = String.format(Locale.getDefault(), "%.1f%%", progressPercentage),
+            text = "${progressPercentage.toInt()}%",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onPrimaryContainer,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
