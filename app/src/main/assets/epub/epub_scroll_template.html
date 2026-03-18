@@ -6,16 +6,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background: transparent;
-      padding: 24px 20px 48px;
-      word-wrap: break-word;
-      overflow-x: hidden;
-      overflow-wrap: break-word;
-      -webkit-text-size-adjust: 100%;
+
+    html, body {
+        width: 100%;
+        background: transparent;
     }
-    #content { display: block; }
+
+    /*
+     * #content: holds all chapter iframes stacked vertically.
+     * opacity:0 keeps it invisible during load; scroll.js sets it to 1
+     * once all iframes are fully loaded and the scroll position restored.
+     */
+    #content {
+        display: block;
+        width: 100%;
+        opacity: 0;
+    }
   </style>
+
   <script src="epub/js/epub_base.js"></script>
   <script src="epub/js/epub_bridge.js"></script>
   <script src="epub/js/scroll/scroll.js"></script>
