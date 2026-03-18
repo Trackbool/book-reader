@@ -1,18 +1,21 @@
 package com.trackbool.bookreader.ui.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.trackbool.bookreader.ui.screens.BookListScreen
-import com.trackbool.bookreader.ui.screens.BookReaderScreen
-import com.trackbool.bookreader.viewmodel.BookListViewModel
-import com.trackbool.bookreader.viewmodel.BookReaderViewModel
+import com.trackbool.bookreader.ui.screens.booklist.BookListScreen
+import com.trackbool.bookreader.ui.screens.booklist.BookListViewModel
+import com.trackbool.bookreader.ui.screens.booklist.ReaderMode
+import com.trackbool.bookreader.ui.screens.reader.PagedReaderScreen
+import com.trackbool.bookreader.ui.screens.reader.ScrollReaderScreen
+import com.trackbool.bookreader.ui.screens.reader.PagedReaderViewModel
+import com.trackbool.bookreader.ui.screens.reader.ScrollReaderViewModel
 
 @Composable
 fun AppNavGraph(
@@ -25,54 +28,62 @@ fun AppNavGraph(
     ) {
         composable(route = AppScreens.BookListScreen.route) {
             val viewModel: BookListViewModel = hiltViewModel()
-            val books by viewModel.books.collectAsState()
-            val importState by viewModel.importState.collectAsState()
-            val deleteState by viewModel.deleteState.collectAsState()
-            val isLoading by viewModel.isLoading.collectAsState()
-            val isSelectionMode by viewModel.isSelectionMode.collectAsState()
-            val selectedBooks by viewModel.selectedBooks.collectAsState()
 
             BookListScreen(
-                books = books,
-                onImportBooks = viewModel::importBooks,
-                onDeleteBooks = viewModel::deleteBooks,
-                onBookClick = { book ->
-                    navController.navigate(
-                        AppScreens.BookReaderScreen.createRoute(book.id)
-                    ) {
+                viewModel = viewModel,
+                onOpenBook = { book, mode ->
+                    val route = when (mode) {
+                        ReaderMode.SCROLL -> AppScreens.ScrollReaderScreen.createRoute(book.id)
+                        ReaderMode.PAGED -> AppScreens.PagedReaderScreen.createRoute(book.id)
+                    }
+                    navController.navigate(route) {
                         launchSingleTop = true
                     }
-                },
-                importState = importState,
-                onResetImportState = viewModel::resetImportState,
-                deleteState = deleteState,
-                onResetDeleteState = viewModel::resetDeleteState,
-                isLoading = isLoading,
-                supportedMimeTypes = viewModel.supportedMimeTypes,
-                isSelectionMode = isSelectionMode,
-                selectedBooks = selectedBooks,
-                onToggleBookSelection = viewModel::toggleBookSelection,
-                onClearSelection = viewModel::clearSelection,
-                onEnterSelectionMode = viewModel::enterSelectionMode,
+                }
             )
         }
 
         composable(
-            route = AppScreens.BookReaderScreen.route,
+            route = AppScreens.ScrollReaderScreen.route,
             arguments = listOf(navArgument("bookId") { type = NavType.LongType }),
         ) {
-            val viewModel: BookReaderViewModel = hiltViewModel()
-            val book by viewModel.book.collectAsState()
-            val chapters by viewModel.chapters.collectAsState()
-            val currentChapter by viewModel.currentChapter.collectAsState()
-            val isLoading by viewModel.isLoading.collectAsState()
-            val hasError by viewModel.hasError.collectAsState()
-            val currentPage by viewModel.currentPage.collectAsState()
-            val totalPages by viewModel.totalPages.collectAsState()
+            val viewModel: ScrollReaderViewModel = hiltViewModel()
+            val book by viewModel.book.collectAsStateWithLifecycle()
+            val chapters by viewModel.chapters.collectAsStateWithLifecycle()
+            val currentChapter by viewModel.currentChapter.collectAsStateWithLifecycle()
+            val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+            val hasError by viewModel.hasError.collectAsStateWithLifecycle()
+
+            book?.let { b ->
+                ScrollReaderScreen(
+                    book = b,
+                    chapters = chapters,
+                    currentChapter = currentChapter,
+                    isLoading = isLoading,
+                    hasError = hasError,
+                    onContentReady = viewModel::onContentReady,
+                    onProgressChanged = viewModel::onProgressChanged,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+        }
+
+        composable(
+            route = AppScreens.PagedReaderScreen.route,
+            arguments = listOf(navArgument("bookId") { type = NavType.LongType }),
+        ) {
+            val viewModel: PagedReaderViewModel = hiltViewModel()
+            val book by viewModel.book.collectAsStateWithLifecycle()
+            val chapters by viewModel.chapters.collectAsStateWithLifecycle()
+            val currentChapter by viewModel.currentChapter.collectAsStateWithLifecycle()
+            val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+            val hasError by viewModel.hasError.collectAsStateWithLifecycle()
+            val currentPage by viewModel.currentPage.collectAsStateWithLifecycle()
+            val totalPages by viewModel.totalPages.collectAsStateWithLifecycle()
             val goToPage = viewModel.goToPage
 
             book?.let { b ->
-                BookReaderScreen(
+                PagedReaderScreen(
                     book = b,
                     chapters = chapters,
                     currentChapter = currentChapter,
@@ -82,11 +93,11 @@ fun AppNavGraph(
                     totalPages = totalPages,
                     goToPage = goToPage,
                     onRequestPage = viewModel::requestPageNavigation,
+                    onContentReady = viewModel::onContentReady,
+                    onProgressChanged = viewModel::onProgressChanged,
                     onBack = { navController.popBackStack() },
                     onCurrentPageChanged = viewModel::onPageChanged,
                     onTotalPagesCalculated = viewModel::onTotalPagesCalculated,
-                    onProgressChanged = viewModel::onProgressChanged,
-                    onContentReady = viewModel::onContentReady,
                 )
             }
         }

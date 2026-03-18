@@ -34,4 +34,7 @@
     <string name="reader_error_loading_content">No se pudo cargar el contenido</string>
     <string name="preparing_your_reading">Preparando lectura...</string>
     <string name="reader_slider_page_indicator">Página %1$d de %2$d</string>
+    <string name="select_reading_mode">Seleccionar modo de lectura</string>
+    <string name="scroll_mode">Desplazamiento</string>
+    <string name="paged_mode">Paginado</string>
 </resources>
