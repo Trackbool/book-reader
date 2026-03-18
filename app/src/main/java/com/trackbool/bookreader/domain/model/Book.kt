@@ -52,8 +52,8 @@ data class Book(
     val currentChapterId: String? = null,
     val documentPositionData: String = ""
 ) {
-    val progressPercent: Int
-        get() = (readingProgress * 100).toInt()
+    val progressPercent: Float
+        get() = (readingProgress * 100)
 
     val fileTypeIcon: String
         get() = when (fileType) {

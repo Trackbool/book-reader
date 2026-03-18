@@ -16,17 +16,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlin.math.roundToInt
+import java.util.Locale
 
 @Composable
 fun ScrollReaderSlider(
-    readingProgress: Float,
-    readingProgressPercent: Int,
-    onProgressSelected: (Int) -> Unit,
+    progressPercent: Float,
+    onProgressChanged: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var sliderPosition by remember(readingProgress) {
-        mutableFloatStateOf(readingProgress)
+    var sliderPosition by remember(progressPercent) {
+        mutableFloatStateOf(progressPercent)
     }
 
     Column(
@@ -34,7 +33,7 @@ fun ScrollReaderSlider(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "$readingProgressPercent%",
+            text = String.format(Locale.getDefault(), "%.1f%%", sliderPosition),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -43,9 +42,9 @@ fun ScrollReaderSlider(
 
         Slider(
             value = sliderPosition,
-            valueRange = 0f..100.0f,
+            valueRange = 0f..100f,
             onValueChange = { sliderPosition = it },
-            onValueChangeFinished = { onProgressSelected(sliderPosition.roundToInt()) },
+            onValueChangeFinished = { onProgressChanged(sliderPosition) },
             colors = SliderDefaults.colors(
                 thumbColor = MaterialTheme.colorScheme.primary,
                 activeTrackColor = MaterialTheme.colorScheme.primary,

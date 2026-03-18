@@ -45,6 +45,7 @@ import com.trackbool.bookreader.R
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.ui.theme.BookReaderTheme
 import java.io.File
+import java.util.Locale
 
 @Composable
 fun BookCard(
@@ -232,7 +233,7 @@ private fun BookInfo(
 
 @Composable
 private fun BookProgressTag(
-    progressPercentage: Int,
+    progressPercentage: Float,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -241,7 +242,7 @@ private fun BookProgressTag(
         modifier = modifier.alpha(0.95f)
     ) {
         Text(
-            text = "$progressPercentage%",
+            text = String.format(Locale.getDefault(), "%.1f%%", progressPercentage),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onPrimaryContainer,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
