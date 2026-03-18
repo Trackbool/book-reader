@@ -34,7 +34,7 @@ fun PagedReaderSlider(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "$currentPage / $totalPages",
+            text = "${sliderPosition.toInt()} / $totalPages",
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -44,7 +44,7 @@ fun PagedReaderSlider(
         Slider(
             value = sliderPosition,
             valueRange = 1f..totalPages.coerceAtLeast(1).toFloat(),
-            onValueChange = { sliderPosition = it },
+            onValueChange = { sliderPosition = it.roundToInt().toFloat() },
             onValueChangeFinished = { onPageSelected(sliderPosition.roundToInt()) },
             colors = SliderDefaults.colors(
                 thumbColor = MaterialTheme.colorScheme.primary,
