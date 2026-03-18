@@ -66,21 +66,19 @@ function isInteractiveElement(target) {
 	return style.cursor === 'pointer';
 }
 
-function dispatchTap(el) {
-	const link = el.closest('a[href]');
-	if (link) {
-		const href = link.getAttribute('href');
+window.addEventListener('epub:link:click', e => {
+    const { href } = e.detail;
 
-		if (href && href.startsWith('#')) {
-			navigateToId(href.slice(1));
-		} else if (href) {
-			window.location.href = href;
-		}
+    if (href?.startsWith('#')) {
+        navigateToId(href.slice(1));
+        return;
+    }
 
-		return;
-	}
+    if (href) {
+        window.location.href = href;
+    }
+});
 
-	if (!isInteractiveElement(el)) {
-		window.TapDetector?.notifyScreenTapped();
-	}
-}
+window.addEventListener('epub:tap', () => {
+    window.TapDetector?.notifyScreenTapped();
+});

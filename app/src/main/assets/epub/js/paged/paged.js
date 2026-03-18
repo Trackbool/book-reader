@@ -37,6 +37,7 @@ let totalPages  = 0;
 let colWidth    = 0;
 let lastProgress   = null;
 let _contentReady  = false;
+let hasSelection = false;
 
 // ─── Initialisation ──────────────────────────────────────────────────────────
 
@@ -217,10 +218,32 @@ async function _createChapter(raw) {
     const doc = iframe.contentDocument;
 
     doc.addEventListener('selectionchange', () => {
-        const hasText = (doc.getSelection()?.toString().length ?? 0) > 0;
-        window.dispatchEvent(new CustomEvent('epub:selection:change', {
-            detail: { hasSelection: hasText }
+        hasSelection = (doc.getSelection()?.toString().length ?? 0) > 0;
+        window.parent.dispatchEvent(new CustomEvent('epub:selection:change', {
+            detail: { hasSelection }
         }));
+    });
+
+    doc.addEventListener('click', e => {
+        const target = e.target;
+
+        if (hasSelection) {
+            doc.getSelection()?.removeAllRanges();
+            return;
+        }
+
+        const link = target.closest('a[href]');
+        if (link) {
+            e.preventDefault();
+            window.parent.dispatchEvent(new CustomEvent('epub:link:click', {
+                detail: { href: link.getAttribute('href') }
+            }));
+            return;
+        }
+
+        if (!isInteractiveElement(target)) {
+            window.parent.dispatchEvent(new CustomEvent('epub:tap'));
+        }
     });
 
     attachSwipeToIframe(iframe);
