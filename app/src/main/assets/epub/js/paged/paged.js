@@ -7,22 +7,6 @@
 // column sits within its rendered viewport. The parent slides a container div
 // to reveal individual pages.
 //
-// Sub-pixel precision:
-//   Page count is derived from Range.getBoundingClientRect() on the narrow
-//   iframe. colWidth = Math.floor(contentEl.width) for consistent integer CSS
-//   pixels that match the Range measurement.
-//
-// Cross-chapter pagination:
-//   Chapters are laid out consecutively. Global page N maps to the chapter
-//   where chapter.startPage ≤ N < nextChapter.startPage. A translateX of
-//   −N × colWidth on the container exposes the correct column from whichever
-//   iframe owns that page.
-//
-// Touch handling:
-//   A transparent overlay div in the parent document captures all touch events
-//   directly — no cross-iframe forwarding. This mirrors the Shadow DOM version
-//   and gives the same smooth drag performance.
-//
 // Progress format:
 //   { chapterId: string, nodeIndex: number, nodeOffset: number [0, 1) }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -47,21 +31,12 @@ let chapterContainer;
  *   nodes: Array<{ el: Element, startPage: number, pageCount: number, endPage: number }>
  * }>}
  */
-let chapters = [];
-
+let chapters    = [];
 let currentPage = 0;
 let totalPages  = 0;
-
-/** CSS-pixel width of one column / page. Always equals Math.floor(contentEl.width). */
-let colWidth = 0;
-
-/** Last emitted progress snapshot, used to restore position after resize. */
-let lastProgress = null;
-
-/** Guards onResize against running before the initial content load completes. */
-let _contentReady = false;
-
-
+let colWidth    = 0;
+let lastProgress   = null;
+let _contentReady  = false;
 
 // ─── Initialisation ──────────────────────────────────────────────────────────
 
@@ -69,6 +44,7 @@ function init() {
     contentEl        = document.getElementById('content');
     chapterContainer = document.getElementById('chapter-container');
     colWidth         = _readColumnWidth();
+
     initSwipeHandler(
         () => chapters,
         () => currentPage,
@@ -118,10 +94,10 @@ async function loadContent(chaptersJson, progressJson = '') {
 
     _contentReady = true;
 
-    setTimeout(() => {
+    requestAnimationFrame(() => {
         contentEl.style.opacity = '1';
         bridge.onContentReady();
-    }, 0);
+    });
 }
 
 /**
@@ -240,30 +216,24 @@ async function _createChapter(raw) {
 
     const doc = iframe.contentDocument;
 
+    // Notificar al bridge sobre cambios de selección de texto
     doc.addEventListener('selectionchange', () => {
-        const selection = doc.getSelection();
-        const hasText = selection.toString().length > 0;
-
-        // Custom event to notify swipe_handler.js
-        window.parent.dispatchEvent(new CustomEvent('epub:selection:change', {
+        const hasText = (doc.getSelection()?.toString().length ?? 0) > 0;
+        window.dispatchEvent(new CustomEvent('epub:selection:change', {
             detail: { hasSelection: hasText }
         }));
     });
 
-    // Inject CSS dimension variables before any layout measurement.
+    // ── Clave: registrar swipe directamente en el iframe, sin overlay ──────────
+    attachSwipeToIframe(iframe);
+
     _setIframeSizes(iframe);
 
-    // Wait for images and fonts to load so layout measurements are accurate.
-    await waitForImagesAndFonts(doc)
-
-    // Two extra frames for the multi-column layout to fully stabilise.
+    await waitForImagesAndFonts(doc);
     await _nextFrame();
     await _nextFrame();
 
     const pageCount = _measureIframePageCount(iframe);
-
-    // Widen the iframe so every column sits inside its rendered viewport.
-    // The parent's translateX then exposes each column by sliding the container.
     iframe.style.width = `${pageCount * colWidth}px`;
 
     await _nextFrame();
@@ -424,7 +394,6 @@ function _emitProgress() {
         const lastNode = nodes[nodes.length - 1];
 
         if (lastNode.endPage < currentPage) {
-            // The entire chapter precedes currentPage — keep as running best.
             anchorChapterId = ch.id;
             anchorNodeIndex = nodes.length - 1;
             continue;
@@ -432,7 +401,6 @@ function _emitProgress() {
 
         if (nodes[0].startPage > currentPage) break;
 
-        // Binary search: last node with startPage ≤ currentPage.
         let lo = 0, hi = nodes.length - 1, found = 0;
         while (lo <= hi) {
             const mid = (lo + hi) >> 1;
@@ -452,7 +420,6 @@ function _emitProgress() {
         anchorNodeIndex = found;
     }
 
-    // Fallback: currentPage is in a gap — report the last node seen before it.
     if (anchorChapterId) {
         const ch   = chapters.find(c => c.id === anchorChapterId);
         const node = ch.nodes[anchorNodeIndex];
