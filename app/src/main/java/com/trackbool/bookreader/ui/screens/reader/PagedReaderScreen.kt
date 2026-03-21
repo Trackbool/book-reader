@@ -21,6 +21,7 @@ import com.trackbool.bookreader.ui.screens.reader.components.ReaderContent
 import com.trackbool.bookreader.ui.screens.reader.components.ReaderProgress
 import com.trackbool.bookreader.ui.screens.reader.components.ReaderTopBar
 import com.trackbool.bookreader.ui.screens.reader.components.PagedReaderControls
+import com.trackbool.bookreader.ui.screens.reader.components.ReaderBottomSheet
 import kotlinx.coroutines.flow.SharedFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,6 +44,7 @@ fun PagedReaderScreen(
     modifier: Modifier = Modifier,
 ) {
     var controlsVisible by remember { mutableStateOf(false) }
+    var bottomSheetVisible by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -50,6 +52,7 @@ fun PagedReaderScreen(
                 book = book,
                 currentChapter = currentChapter,
                 onBack = onBack,
+                onSettingsClick = { bottomSheetVisible = !bottomSheetVisible }
             )
         },
         modifier = modifier.fillMaxSize(),
@@ -102,6 +105,11 @@ fun PagedReaderScreen(
                     )
                 },
                 modifier = Modifier.fillMaxWidth()
+            )
+
+            ReaderBottomSheet(
+                show = bottomSheetVisible,
+                onDismiss = { bottomSheetVisible = false }
             )
         }
     }

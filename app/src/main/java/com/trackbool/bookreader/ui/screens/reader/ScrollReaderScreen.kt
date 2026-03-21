@@ -17,6 +17,7 @@ import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.ui.screens.reader.components.content.BookScrollContent
 import com.trackbool.bookreader.ui.common.model.ChapterView
 import com.trackbool.bookreader.ui.screens.reader.components.ReaderBottomBar
+import com.trackbool.bookreader.ui.screens.reader.components.ReaderBottomSheet
 import com.trackbool.bookreader.ui.screens.reader.components.ReaderContent
 import com.trackbool.bookreader.ui.screens.reader.components.ReaderProgress
 import com.trackbool.bookreader.ui.screens.reader.components.ReaderTopBar
@@ -39,6 +40,7 @@ fun ScrollReaderScreen(
     modifier: Modifier = Modifier,
 ) {
     var controlsVisible by remember { mutableStateOf(false) }
+    var bottomSheetVisible by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -46,6 +48,7 @@ fun ScrollReaderScreen(
                 book = book,
                 currentChapter = currentChapter,
                 onBack = onBack,
+                onSettingsClick = { bottomSheetVisible = !bottomSheetVisible }
             )
         },
         modifier = modifier.fillMaxSize(),
@@ -93,6 +96,11 @@ fun ScrollReaderScreen(
                     )
                 },
                 modifier = Modifier.fillMaxWidth()
+            )
+
+            ReaderBottomSheet(
+                show = bottomSheetVisible,
+                onDismiss = { bottomSheetVisible = false }
             )
         }
     }

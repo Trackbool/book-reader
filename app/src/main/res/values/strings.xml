@@ -37,4 +37,6 @@
     <string name="select_reading_mode">Seleccionar modo de lectura</string>
     <string name="scroll_mode">Desplazamiento</string>
     <string name="paged_mode">Paginado</string>
+    <string name="settings">Configuración</string>
+    <string name="settings_font_size">Tamaño de la fuente</string>
 </resources>
