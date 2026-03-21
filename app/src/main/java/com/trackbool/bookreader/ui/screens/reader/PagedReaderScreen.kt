@@ -34,7 +34,7 @@ fun PagedReaderScreen(
     currentPage: Int,
     totalPages: Int,
     goToPage: SharedFlow<Int>,
-    onRequestPage: (Int) -> Unit,
+    onPageSelected: (Int) -> Unit,
     onContentReady: () -> Unit,
     onProgressChanged: (Float, String, String) -> Unit,
     onBack: () -> Unit,
@@ -87,7 +87,7 @@ fun PagedReaderScreen(
                     PagedReaderControls(
                         currentPage = currentPage,
                         totalPages = totalPages,
-                        onPageSelected = onRequestPage,
+                        onPageSelected = onPageSelected,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp)

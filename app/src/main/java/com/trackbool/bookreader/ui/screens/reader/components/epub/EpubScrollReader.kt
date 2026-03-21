@@ -1,10 +1,12 @@
 package com.trackbool.bookreader.ui.screens.reader.components.epub
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.ui.common.model.ChapterView
+import kotlinx.coroutines.flow.SharedFlow
 
 @Composable
 internal fun EpubScrollReader(
@@ -12,6 +14,7 @@ internal fun EpubScrollReader(
     chapters: List<ChapterView>,
     onContentReady: () -> Unit,
     onProgressChanged: (Float, String, String) -> Unit,
+    goToProgress: SharedFlow<Float>,
     modifier: Modifier = Modifier,
     onScreenTapped: () -> Unit,
 ) {
@@ -28,6 +31,12 @@ internal fun EpubScrollReader(
                 )
             }
         )
+    }
+
+    LaunchedEffect(bridge) {
+        goToProgress.collect { progress ->
+            bridge.goToProgress(progress)
+        }
     }
 
     EpubWebViewBase(

@@ -54,7 +54,7 @@ class PagedReaderViewModel @Inject constructor(
         updateProgress(readingProgress, chapterId, documentPositionData)
     }
 
-    fun requestPageNavigation(page: Int) {
+    fun onPageSelected(page: Int) {
         viewModelScope.launch {
             _goToPage.emit(page)
         }

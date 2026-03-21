@@ -1,10 +1,15 @@
 package com.trackbool.bookreader.ui.screens.reader
 
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.viewModelScope
 import com.trackbool.bookreader.domain.usecase.GetBookContentUseCase
 import com.trackbool.bookreader.domain.usecase.GetBookUseCase
 import com.trackbool.bookreader.domain.usecase.UpdateBookProgressUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -19,6 +24,11 @@ class ScrollReaderViewModel @Inject constructor(
     getBookContentUseCase = getBookContentUseCase,
     updateBookProgressUseCase = updateBookProgressUseCase,
 ) {
+
+    private val _goToProgress = MutableSharedFlow<Float>()
+
+    val goToProgress: SharedFlow<Float> = _goToProgress.asSharedFlow()
+
     override fun onChaptersLoaded() {
         _isLoadingRender.value = true
         _isLoadingData.value = false
@@ -27,5 +37,11 @@ class ScrollReaderViewModel @Inject constructor(
     fun onProgressChanged(readingProgress: Float, chapterId: String, documentPositionData: String) {
         onChapterChanged(chapterId)
         updateProgress(readingProgress, chapterId, documentPositionData)
+    }
+
+    fun onProgressSelected(progress: Float) {
+        viewModelScope.launch {
+            _goToProgress.emit(progress / 100f)
+        }
     }
 }

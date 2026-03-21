@@ -46,6 +46,12 @@ class EpubBridge(
     }
 
     @JavascriptInterface
+    fun goToProgress(progress: Float) {
+        Log.d("EpubBridge", "goToProgress called with progress: $progress")
+        executeJavascript("goToProgress($progress)")
+    }
+
+    @JavascriptInterface
     fun goToPage(page: Int) {
         Log.d("EpubBridge", "goToPage called with page: $page")
         executeJavascript("goToPage(${page - 1})")

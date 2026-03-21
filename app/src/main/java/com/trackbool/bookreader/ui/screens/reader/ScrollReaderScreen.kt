@@ -21,6 +21,7 @@ import com.trackbool.bookreader.ui.screens.reader.components.ReaderContent
 import com.trackbool.bookreader.ui.screens.reader.components.ReaderProgress
 import com.trackbool.bookreader.ui.screens.reader.components.ReaderTopBar
 import com.trackbool.bookreader.ui.screens.reader.components.ScrollReaderControls
+import kotlinx.coroutines.flow.SharedFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,6 +29,8 @@ fun ScrollReaderScreen(
     book: Book,
     chapters: List<ChapterView>,
     currentChapter: ChapterView?,
+    onProgressSelected: (Float) -> Unit,
+    goToProgress: SharedFlow<Float>,
     isLoading: Boolean,
     hasError: Boolean,
     onContentReady: () -> Unit,
@@ -65,6 +68,7 @@ fun ScrollReaderScreen(
                     chapters = chapters,
                     onContentReady = onContentReady,
                     onProgressChanged = onProgressChanged,
+                    goToProgress = goToProgress,
                     onScreenTapped = { controlsVisible = !controlsVisible },
                     modifier = Modifier.fillMaxSize()
                 )
@@ -76,7 +80,7 @@ fun ScrollReaderScreen(
                 controls = {
                     ScrollReaderControls(
                         progressPercent = book.progressPercent,
-                        onProgressChanged = { /* TODO: Implement scroll to position */ },
+                        onProgressChanged = onProgressSelected,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp)

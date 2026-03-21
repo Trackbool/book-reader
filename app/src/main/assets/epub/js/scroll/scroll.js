@@ -101,6 +101,12 @@ function navigateToId(id, offset = 40) {
     }
 }
 
+function goToProgress(progress) {
+    const total = document.documentElement.scrollHeight - window.innerHeight;
+    const target = progress * total;
+    window.scrollTo({ top: target, behavior: 'instant' });
+}
+
 // ─── Private — iframe creation ────────────────────────────────────────────────
 
 // Creates and loads an iframe for a single chapter, waits for images and
