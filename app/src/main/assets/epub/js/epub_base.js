@@ -82,3 +82,7 @@ window.addEventListener('epub:link:click', e => {
 window.addEventListener('epub:tap', () => {
     window.TapDetector?.notifyScreenTapped();
 });
+
+function setFontSize(size) {
+    document.documentElement.style.setProperty('--reader-font-size', size + 'px');
+}

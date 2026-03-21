@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.model.BookFileType
+import com.trackbool.bookreader.domain.model.ReaderSettings
 import com.trackbool.bookreader.ui.common.components.UnsupportedFormatMessage
 import com.trackbool.bookreader.ui.common.model.ChapterView
 import com.trackbool.bookreader.ui.screens.reader.components.epub.EpubPagedReader
@@ -19,6 +20,7 @@ fun BookPagedContent(
     onContentReady: () -> Unit,
     onProgressChanged: (Float, String, String) -> Unit,
     onScreenTapped: () -> Unit,
+    readerSettings: ReaderSettings,
     modifier: Modifier = Modifier,
 ) {
     when (book.fileType) {
@@ -31,6 +33,7 @@ fun BookPagedContent(
             onContentReady = onContentReady,
             onProgressChanged = onProgressChanged,
             onScreenTapped = onScreenTapped,
+            readerSettings = readerSettings,
             modifier = modifier,
         )
         BookFileType.PDF -> UnsupportedFormatMessage(format = "PDF", modifier = modifier)

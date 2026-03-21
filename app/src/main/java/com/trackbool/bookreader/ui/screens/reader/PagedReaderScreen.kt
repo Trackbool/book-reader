@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.trackbool.bookreader.domain.model.Book
+import com.trackbool.bookreader.domain.model.ReaderSettings
 import com.trackbool.bookreader.ui.screens.reader.components.content.BookPagedContent
 import com.trackbool.bookreader.ui.common.model.ChapterView
 import com.trackbool.bookreader.ui.screens.reader.components.ReaderBottomBar
@@ -35,6 +36,8 @@ fun PagedReaderScreen(
     currentPage: Int,
     totalPages: Int,
     goToPage: SharedFlow<Int>,
+    readerSettings: ReaderSettings,
+    onFontSizeChanged: (Int) -> Unit,
     onPageSelected: (Int) -> Unit,
     onContentReady: () -> Unit,
     onProgressChanged: (Float, String, String) -> Unit,
@@ -79,6 +82,7 @@ fun PagedReaderScreen(
                     goToPage = goToPage,
                     onProgressChanged = onProgressChanged,
                     onScreenTapped = { controlsVisible = !controlsVisible },
+                    readerSettings = readerSettings,
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -109,6 +113,8 @@ fun PagedReaderScreen(
 
             ReaderBottomSheet(
                 show = bottomSheetVisible,
+                settings = readerSettings,
+                onFontSizeChanged = onFontSizeChanged,
                 onDismiss = { bottomSheetVisible = false }
             )
         }

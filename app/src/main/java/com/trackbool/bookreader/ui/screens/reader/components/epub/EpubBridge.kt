@@ -58,6 +58,12 @@ class EpubBridge(
     }
 
     @JavascriptInterface
+    fun setFontSize(size: Float) {
+        Log.d("EpubBridge", "setFontSize called with size: $size")
+        executeJavascript("setFontSize($size)")
+    }
+
+    @JavascriptInterface
     fun onDebugInfo(info: String) {
         Log.d("EpubBridge", info)
     }

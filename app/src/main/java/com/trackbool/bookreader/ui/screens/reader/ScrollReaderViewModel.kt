@@ -2,6 +2,7 @@ package com.trackbool.bookreader.ui.screens.reader
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import com.trackbool.bookreader.domain.repository.ReaderSettingsRepository
 import com.trackbool.bookreader.domain.usecase.GetBookContentUseCase
 import com.trackbool.bookreader.domain.usecase.GetBookUseCase
 import com.trackbool.bookreader.domain.usecase.UpdateBookProgressUseCase
@@ -18,11 +19,13 @@ class ScrollReaderViewModel @Inject constructor(
     getBookUseCase: GetBookUseCase,
     getBookContentUseCase: GetBookContentUseCase,
     updateBookProgressUseCase: UpdateBookProgressUseCase,
+    readerSettingsRepository: ReaderSettingsRepository,
 ) : BaseReaderViewModel(
     bookId = savedStateHandle.get<Long>("bookId") ?: -1,
     getBookUseCase = getBookUseCase,
     getBookContentUseCase = getBookContentUseCase,
     updateBookProgressUseCase = updateBookProgressUseCase,
+    readerSettingsRepository = readerSettingsRepository,
 ) {
 
     private val _goToProgress = MutableSharedFlow<Float>()

@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.model.BookFileType
 import com.trackbool.bookreader.domain.model.ChapterContent
+import com.trackbool.bookreader.domain.model.ReaderSettings
+import com.trackbool.bookreader.domain.repository.ReaderSettingsRepository
 import com.trackbool.bookreader.domain.usecase.GetBookContentUseCase
 import com.trackbool.bookreader.domain.usecase.GetBookUseCase
 import com.trackbool.bookreader.domain.usecase.UpdateBookProgressUseCase
@@ -23,6 +25,7 @@ abstract class BaseReaderViewModel(
     protected val getBookUseCase: GetBookUseCase,
     protected val getBookContentUseCase: GetBookContentUseCase,
     protected val updateBookProgressUseCase: UpdateBookProgressUseCase,
+    protected val readerSettingsRepository: ReaderSettingsRepository,
 ) : ViewModel() {
 
     private val _book = MutableStateFlow<Book?>(null)
@@ -44,6 +47,9 @@ abstract class BaseReaderViewModel(
     val isLoading: StateFlow<Boolean> = combine(_isLoadingData, _isLoadingRender) { data, render ->
         data || render
     }.stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    val readerSettings: StateFlow<ReaderSettings> = readerSettingsRepository.settings
+        .stateIn(viewModelScope, SharingStarted.Eagerly, ReaderSettings())
 
     init {
         loadBook()
@@ -117,6 +123,12 @@ abstract class BaseReaderViewModel(
             result.onSuccess {
                 _book.value = it
             }
+        }
+    }
+
+    fun updateFontSize(size: Int) {
+        viewModelScope.launch {
+            readerSettingsRepository.updateFontSize(size.toFloat())
         }
     }
 

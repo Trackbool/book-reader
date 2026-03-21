@@ -1,7 +1,6 @@
 package com.trackbool.bookreader.ui.screens.reader.components
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,17 +20,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.trackbool.bookreader.R
+import com.trackbool.bookreader.domain.model.ReaderSettings
+import com.trackbool.bookreader.domain.model.ReaderSettingsDefaults
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReaderBottomSheet(
     show: Boolean,
-    onDismiss: () -> Unit
+    settings: ReaderSettings,
+    onFontSizeChanged: (Int) -> Unit,
+    onDismiss: () -> Unit,
 ) {
     if (!show) return
 
-    var fontSize by remember { mutableFloatStateOf(20f) }
     val sheetState = rememberModalBottomSheetState()
+
+    var fontSizeSliderPosition by remember(settings.fontSize) {
+        mutableFloatStateOf(settings.fontSize)
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -49,12 +56,13 @@ fun ReaderBottomSheet(
 
                 Spacer(Modifier.height(12.dp))
 
-                Text("${fontSize.toInt()} pt")
+                Text("${fontSizeSliderPosition.toInt()} pt")
 
                 Slider(
-                    value = fontSize,
-                    onValueChange = { fontSize = it },
-                    valueRange = 12f..30f
+                    value = fontSizeSliderPosition,
+                    onValueChange = { fontSizeSliderPosition = it },
+                    onValueChangeFinished = { onFontSizeChanged(fontSizeSliderPosition.roundToInt()) },
+                    valueRange = ReaderSettingsDefaults.FONT_SIZE_MIN..ReaderSettingsDefaults.FONT_SIZE_MAX
                 )
             }
         )

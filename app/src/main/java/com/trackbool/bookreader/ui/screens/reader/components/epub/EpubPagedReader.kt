@@ -5,6 +5,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.trackbool.bookreader.domain.model.Book
+import com.trackbool.bookreader.domain.model.ReaderSettings
 import com.trackbool.bookreader.ui.common.model.ChapterView
 import kotlinx.coroutines.flow.SharedFlow
 
@@ -18,6 +19,7 @@ internal fun EpubPagedReader(
     onContentReady: () -> Unit,
     onProgressChanged: (Float, String, String) -> Unit,
     onScreenTapped: () -> Unit,
+    readerSettings: ReaderSettings,
     modifier: Modifier = Modifier,
 ) {
     val bridge = remember {
@@ -39,6 +41,10 @@ internal fun EpubPagedReader(
         goToPage.collect { page ->
             bridge.goToPage(page)
         }
+    }
+
+    LaunchedEffect(readerSettings.fontSize) {
+        bridge.setFontSize(readerSettings.fontSize)
     }
 
     EpubWebViewBase(

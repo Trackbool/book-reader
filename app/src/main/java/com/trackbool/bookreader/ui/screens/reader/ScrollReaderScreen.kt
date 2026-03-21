@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.trackbool.bookreader.domain.model.Book
+import com.trackbool.bookreader.domain.model.ReaderSettings
 import com.trackbool.bookreader.ui.screens.reader.components.content.BookScrollContent
 import com.trackbool.bookreader.ui.common.model.ChapterView
 import com.trackbool.bookreader.ui.screens.reader.components.ReaderBottomBar
@@ -34,6 +35,8 @@ fun ScrollReaderScreen(
     goToProgress: SharedFlow<Float>,
     isLoading: Boolean,
     hasError: Boolean,
+    readerSettings: ReaderSettings,
+    onFontSizeChanged: (Int) -> Unit,
     onContentReady: () -> Unit,
     onProgressChanged: (Float, String, String) -> Unit,
     onBack: () -> Unit,
@@ -73,6 +76,7 @@ fun ScrollReaderScreen(
                     onProgressChanged = onProgressChanged,
                     goToProgress = goToProgress,
                     onScreenTapped = { controlsVisible = !controlsVisible },
+                    readerSettings = readerSettings,
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -100,6 +104,8 @@ fun ScrollReaderScreen(
 
             ReaderBottomSheet(
                 show = bottomSheetVisible,
+                settings = readerSettings,
+                onFontSizeChanged = onFontSizeChanged,
                 onDismiss = { bottomSheetVisible = false }
             )
         }

@@ -54,6 +54,7 @@ fun AppNavGraph(
             val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
             val hasError by viewModel.hasError.collectAsStateWithLifecycle()
             val goToProgress = viewModel.goToProgress
+            val readerSettings by viewModel.readerSettings.collectAsStateWithLifecycle()
 
             book?.let { b ->
                 ScrollReaderScreen(
@@ -64,6 +65,8 @@ fun AppNavGraph(
                     goToProgress = goToProgress,
                     isLoading = isLoading,
                     hasError = hasError,
+                    readerSettings = readerSettings,
+                    onFontSizeChanged = viewModel::updateFontSize,
                     onContentReady = viewModel::onContentReady,
                     onProgressChanged = viewModel::onProgressChanged,
                     onBack = { navController.popBackStack() },
@@ -84,6 +87,7 @@ fun AppNavGraph(
             val currentPage by viewModel.currentPage.collectAsStateWithLifecycle()
             val totalPages by viewModel.totalPages.collectAsStateWithLifecycle()
             val goToPage = viewModel.goToPage
+            val readerSettings by viewModel.readerSettings.collectAsStateWithLifecycle()
 
             book?.let { b ->
                 PagedReaderScreen(
@@ -95,6 +99,8 @@ fun AppNavGraph(
                     currentPage = currentPage,
                     totalPages = totalPages,
                     goToPage = goToPage,
+                    readerSettings = readerSettings,
+                    onFontSizeChanged = viewModel::updateFontSize,
                     onPageSelected = viewModel::onPageSelected,
                     onContentReady = viewModel::onContentReady,
                     onProgressChanged = viewModel::onProgressChanged,
