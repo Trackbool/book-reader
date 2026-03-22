@@ -8,6 +8,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -15,8 +16,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,53 +68,23 @@ fun BaseReaderScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-            ) {
-                ReaderContent(
-                    isLoading = isLoading,
-                    hasError = hasError,
-                    chapters = chapters,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    content(onScreenTapped)
-                }
+            ReaderContentArea(
+                isLoading = isLoading,
+                hasError = hasError,
+                chapters = chapters,
+                showControls = showControls,
+                onScreenTapped = onScreenTapped,
+                content = content,
+                controls = controls,
+                modifier = Modifier.weight(1f)
+            )
 
-                this@Column.AnimatedVisibility(
-                    visible = showControls,
-                    enter = fadeIn() + slideInVertically { it },
-                    exit = fadeOut() + slideOutVertically { it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.BottomCenter)
-                ) {
-                    controls()
-                }
-            }
-
-            AnimatedContent(
-                targetState = showControls,
-                label = "BottomBarTransition",
-                modifier = Modifier.fillMaxWidth()
-            ) { showControlsNow ->
-                if (showControlsNow) {
-                    Box(Modifier.fillMaxWidth())
-                } else {
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        ReaderProgress(
-                            progressPercent = progressPercent,
-                            currentPage = currentPage,
-                            totalPages = totalPages,
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        )
-                    }
-                }
-            }
+            ReaderBottomBar(
+                showControls = showControls,
+                progressPercent = progressPercent,
+                currentPage = currentPage,
+                totalPages = totalPages
+            )
         }
 
         ReaderBottomSheet(
@@ -122,5 +93,84 @@ fun BaseReaderScreen(
             onFontSizeChanged = onFontSizeChanged,
             onDismiss = { bottomSheetVisible = false }
         )
+    }
+}
+
+@Composable
+private fun ReaderContentArea(
+    isLoading: Boolean,
+    hasError: Boolean,
+    chapters: List<ChapterView>,
+    showControls: Boolean,
+    onScreenTapped: () -> Unit,
+    content: @Composable (onScreenTapped: () -> Unit) -> Unit,
+    controls: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier.fillMaxWidth()
+    ) {
+        ReaderContent(
+            isLoading = isLoading,
+            hasError = hasError,
+            chapters = chapters,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            content(onScreenTapped)
+        }
+
+        ReaderControlsOverlay(
+            showControls = showControls,
+            controls = controls,
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+        )
+    }
+}
+
+@Composable
+private fun ReaderControlsOverlay(
+    showControls: Boolean,
+    controls: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(
+        visible = showControls,
+        enter = fadeIn() + slideInVertically { it },
+        exit = fadeOut() + slideOutVertically { it },
+        modifier = modifier
+    ) {
+        controls()
+    }
+}
+
+@Composable
+private fun ReaderBottomBar(
+    showControls: Boolean,
+    progressPercent: Float,
+    currentPage: Int?,
+    totalPages: Int?,
+) {
+    AnimatedContent(
+        targetState = showControls,
+        label = "BottomBarTransition",
+        modifier = Modifier.fillMaxWidth()
+    ) { showControlsNow ->
+        if (showControlsNow) {
+            Box(Modifier.fillMaxWidth())
+        } else {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                ReaderProgress(
+                    progressPercent = progressPercent,
+                    currentPage = currentPage,
+                    totalPages = totalPages,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
+        }
     }
 }
