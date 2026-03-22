@@ -67,8 +67,13 @@ document.addEventListener('DOMContentLoaded', init);
  * @param {string} chaptersJson  JSON array of raw chapter descriptors.
  * @param {string} [progressJson] Serialised progress object; omit to start at page 0.
  */
-async function loadContent(chaptersJson, progressJson = '') {
+async function loadContent(chaptersJson, progressJson = '', readerSettings = "") {
     _contentReady = false;
+
+    if (readerSettings) {
+        const settings = JSON.parse(readerSettings);
+        _currentFontSize = settings.fontSize ?? 20;
+    }
 
     const raw = JSON.parse(chaptersJson);
 
@@ -526,6 +531,7 @@ function _setIframeSizes(iframe) {
     if (root) {
         root.style.setProperty('--vw', `${w}px`);
         root.style.setProperty('--vh', `${h}px`);
+        root.style.setProperty('--reader-font-size', `${_currentFontSize}px`);
     }
 
     iframe.style.height = `${h}px`;

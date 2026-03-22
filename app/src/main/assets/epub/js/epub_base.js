@@ -83,6 +83,15 @@ window.addEventListener('epub:tap', () => {
     window.TapDetector?.notifyScreenTapped();
 });
 
+let _currentFontSize;
+
 function setFontSize(size) {
-    document.documentElement.style.setProperty('--reader-font-size', size + 'px');
+    _currentFontSize = size;
+
+    for (const ch of chapters) {
+        ch.el.contentDocument?.documentElement
+            .style.setProperty('--reader-font-size', `${size}px`);
+    }
+
+    onResize();
 }

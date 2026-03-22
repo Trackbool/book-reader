@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', init);
 //
 // chaptersJson — JSON array of { id: string, html: string (base64) }
 // progressJson — optional JSON object { chapterId, nodeIndex, nodeOffset }
-async function loadContent(chaptersJson, progressJson = '') {
+async function loadContent(chaptersJson, progressJson = '', readerSettings = "") {
     const raw = JSON.parse(chaptersJson);
     chapters  = await Promise.all(raw.map(_createChapter));
 

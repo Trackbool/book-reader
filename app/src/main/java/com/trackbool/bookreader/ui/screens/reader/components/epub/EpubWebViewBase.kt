@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import com.trackbool.bookreader.domain.model.Book
 import com.trackbool.bookreader.domain.model.ChapterContent
+import com.trackbool.bookreader.domain.model.ReaderSettings
 import com.trackbool.bookreader.ui.common.model.ChapterView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -29,11 +30,12 @@ import org.json.JSONObject
 internal fun EpubWebViewBase(
     book: Book,
     chapters: List<ChapterView>,
+    readerSettings: ReaderSettings,
     assetFileName: String,
     modifier: Modifier = Modifier,
     extraJavascriptInterfaces: List<Pair<EpubJavascriptInterface, String>> = emptyList(),
     onScreenTapped: () -> Unit = {},
-) {
+    ) {
     val appAssetResolver = rememberAppAssetResolver()
     val epubAssetResolver = rememberEpubAssetResolver(book.filePath)
 
@@ -62,7 +64,7 @@ internal fun EpubWebViewBase(
             cJson to pJson
         }
 
-        wv.evaluateJavascript("loadContent('$chaptersJson', '$progressJson');", null)
+        wv.evaluateJavascript("loadContent('$chaptersJson', '$progressJson', '${readerSettings.toSettingsJson()}');", null)
     }
 
     DisposableEffect(Unit) {
@@ -115,6 +117,11 @@ internal fun EpubWebViewBase(
         )
     }
 }
+
+private fun ReaderSettings.toSettingsJson(): String =
+    JSONObject().apply {
+        put("fontSize", fontSize)
+    }.toString().escapeForJsSingleQuote()
 
 private fun List<ChapterView>.toChaptersJson(): String =
     JSONArray(map { chapter ->
