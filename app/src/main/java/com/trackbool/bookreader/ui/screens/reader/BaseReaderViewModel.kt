@@ -98,7 +98,15 @@ abstract class BaseReaderViewModel(
         }
     }
 
-    protected abstract fun onChaptersLoaded()
+    protected fun onChaptersLoaded() {
+        _isLoadingRender.value = true
+        _isLoadingData.value = false
+    }
+
+    fun onProgressChanged(readingProgress: Float, chapterId: String, documentPositionData: String) {
+        onChapterChanged(chapterId)
+        updateProgress(readingProgress, chapterId, documentPositionData)
+    }
 
     fun onContentReady() {
         _isLoadingRender.value = false

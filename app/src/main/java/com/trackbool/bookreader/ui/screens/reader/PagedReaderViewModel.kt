@@ -39,22 +39,12 @@ class PagedReaderViewModel @Inject constructor(
     private val _goToPage = MutableSharedFlow<Int>()
     val goToPage: SharedFlow<Int> = _goToPage.asSharedFlow()
 
-    override fun onChaptersLoaded() {
-        _isLoadingRender.value = true
-        _isLoadingData.value = false
-    }
-
     fun onPageChanged(page: Int) {
         _currentPage.value = page
     }
 
     fun onTotalPagesCalculated(total: Int) {
         _totalPages.value = total
-    }
-
-    fun onProgressChanged(readingProgress: Float, chapterId: String, documentPositionData: String) {
-        onChapterChanged(chapterId)
-        updateProgress(readingProgress, chapterId, documentPositionData)
     }
 
     fun onPageSelected(page: Int) {

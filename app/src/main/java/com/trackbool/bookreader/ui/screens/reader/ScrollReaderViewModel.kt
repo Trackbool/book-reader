@@ -32,16 +32,6 @@ class ScrollReaderViewModel @Inject constructor(
 
     val goToProgress: SharedFlow<Float> = _goToProgress.asSharedFlow()
 
-    override fun onChaptersLoaded() {
-        _isLoadingRender.value = true
-        _isLoadingData.value = false
-    }
-
-    fun onProgressChanged(readingProgress: Float, chapterId: String, documentPositionData: String) {
-        onChapterChanged(chapterId)
-        updateProgress(readingProgress, chapterId, documentPositionData)
-    }
-
     fun onProgressSelected(progress: Float) {
         viewModelScope.launch {
             _goToProgress.emit(progress / 100f)
