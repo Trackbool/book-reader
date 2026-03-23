@@ -3,6 +3,10 @@
   -webkit-font-smoothing: antialiased;
 }
 
+html {
+  --reader-font-size: 20px;
+}
+
 html, body {
   margin: 0 !important;
   padding: 0 !important;
@@ -10,7 +14,6 @@ html, body {
   background: transparent;
 
   font-family: Georgia, 'Times New Roman', serif;
-  --reader-font-size: 20px;
   font-size: var(--reader-font-size);
   line-height: 1.75;
   color: #1c1c1e;

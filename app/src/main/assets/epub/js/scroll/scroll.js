@@ -3,49 +3,60 @@
 //
 // Each chapter renders in its own same-origin <iframe> (srcdoc). The iframe
 // never scrolls — its height is stretched to fit its content so that a single
-// window scroll drives the whole book. This isolates chapter CSS without
-// requiring Shadow DOM, and lets click/tap listeners be attached directly to
-// each iframe's document, mirroring the paged reader's approach.
+// window scroll drives the whole book.
 //
-// High-level flow:
-//   1. init()         — locate #content container
-//   2. loadContent()  — create iframes, wait for assets, restore progress
-//   3. scroll events  — debounced _emitProgress() → bridge.onProgressChanged()
+// Node cache format (parallel to the paged reader):
+//   ch.nodes = Array<{ el: Element, top: number, height: number }>
+//   where top/height are document-absolute coordinates (px from top of page).
 //
 // Progress format (JSON):
-//   { chapterId: string, nodeIndex: number, nodeOffset: number (0–1) }
+//   { chapterId: string, nodeIndex: number, nodeOffset: number [0, 1) }
+//
+//   nodeOffset = (scrollY − nodeTop) / nodeHeight
+//   i.e. what fraction of the node has scrolled above the viewport top.
+//   0 → node top is at or below viewport top.
+//   1 → node bottom is at viewport top (node fully scrolled past).
 //
 // Bridge interface:
 //   bridge.onContentReady()
 //   bridge.onProgressChanged(globalProgress: number, chapterId: string, progressJson: string)
 //
 // Custom events dispatched to window (handled in epub_base.js):
-//   epub:link:click   — { href: string }
-//   epub:tap          — { target: Element }
-//   epub:selection:change — { hasSelection: boolean }
+//   epub:link:click        — { href: string }
+//   epub:tap               — (no detail)
+//   epub:selection:change  — { hasSelection: boolean }
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Outer container that holds all chapter iframes stacked vertically.
+// BLOCK_SELECTOR is declared in epub_base.js.
+
+// ─── State ────────────────────────────────────────────────────────────────────
+
+/** Outer container that holds all chapter iframes stacked vertically. */
 let contentEl;
 
 /**
  * Ordered list of loaded chapter descriptors.
- * @type {Array<{ id: string, el: HTMLIFrameElement }>}
+ * @type {Array<{
+ *   id:    string,
+ *   el:    HTMLIFrameElement,
+ *   nodes: Array<{ el: Element, top: number, height: number }>
+ * }>}
  */
 let chapters = [];
 
-// ID of the chapter iframe currently at the top of the viewport.
-// Updated by the IntersectionObserver; read by _emitProgress().
-let currentChapterId = null;
+/** Last serialised progress object; used by onResize to restore position. */
+let lastProgress = null;
 
-// Guards against the IntersectionObserver overwriting currentChapterId while
-// _restoreProgress() is executing a programmatic scroll.
-// Without this, the observer's async callback can fire mid-scroll and reset
-// currentChapterId to whichever chapter happens to be briefly visible during
-// the scroll animation, corrupting the next _emitProgress() call.
+/**
+ * Guards against the IntersectionObserver overwriting currentChapterId while
+ * _restoreProgress() is executing a programmatic scroll.
+ */
 let scrollLocked = false;
 
-// ─── Initialisation ──────────────────────────────────────────────────────────
+/** ID of the topmost visible chapter (kept in sync by the IntersectionObserver). */
+let currentChapterId = null;
+
+// ─── Initialisation ───────────────────────────────────────────────────────────
 
 function init() {
     contentEl = document.getElementById('content');
@@ -55,15 +66,28 @@ document.addEventListener('DOMContentLoaded', init);
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
-// Entry point called by the native layer once the WebView has finished loading.
-// Creates one iframe per chapter, waits for all assets, then either restores
-// a previous reading position or starts from the top.
-//
-// chaptersJson — JSON array of { id: string, html: string (base64) }
-// progressJson — optional JSON object { chapterId, nodeIndex, nodeOffset }
-async function loadContent(chaptersJson, progressJson = '', readerSettings = "") {
+/**
+ * Entry point called by the native layer once the WebView has finished loading.
+ * Creates one iframe per chapter, waits for all assets, builds the node cache,
+ * then either restores a previous reading position or starts from the top.
+ *
+ * @param {string} chaptersJson   JSON array of { id: string, html: string (base64) }
+ * @param {string} [progressJson] JSON object { chapterId, nodeIndex, nodeOffset }
+ * @param {string} [readerSettings] JSON object { fontSize: number, … }
+ */
+async function loadContent(chaptersJson, progressJson = '', readerSettings = '') {
+    if (readerSettings) {
+        const settings   = JSON.parse(readerSettings);
+        _currentFontSize = settings.fontSize ?? 20;
+    }
+
     const raw = JSON.parse(chaptersJson);
     chapters  = await Promise.all(raw.map(_createChapter));
+
+    // Allow one paint after iframe sizing before reading node geometry.
+    await _nextFrame();
+
+    _buildSectionCache();
 
     _setupChapterObserver();
     _setupScrollTracking();
@@ -71,6 +95,8 @@ async function loadContent(chaptersJson, progressJson = '', readerSettings = "")
     if (progressJson) {
         const { chapterId, nodeIndex, nodeOffset = 0 } = JSON.parse(progressJson);
         _restoreProgress(chapterId, nodeIndex, nodeOffset);
+    } else {
+        _emitProgress();
     }
 
     await _nextFrame();
@@ -81,10 +107,13 @@ async function loadContent(chaptersJson, progressJson = '', readerSettings = "")
     }, 0);
 }
 
-// Scrolls the viewport to the element with the given ID.
-// Checks chapter IDs first, then searches inside each iframe's document.
-// `offset` (px) leaves a small gap above the target so it is not flush with
-// the top edge of the screen, improving readability.
+/**
+ * Scrolls the viewport to the element with the given ID.
+ * Checks chapter IDs first, then searches inside each iframe's document.
+ *
+ * @param {string} id
+ * @param {number} [offset=40]  Visual gap above the target (px).
+ */
 function navigateToId(id, offset = 40) {
     const chapter = chapters.find(c => c.id === id);
     if (chapter) {
@@ -95,26 +124,67 @@ function navigateToId(id, offset = 40) {
     for (const ch of chapters) {
         const el = ch.el.contentDocument?.getElementById(id);
         if (!el) continue;
-        const top = ch.el.offsetTop + el.getBoundingClientRect().top - offset;
+        const top = ch.el.offsetTop + el.getBoundingClientRect().top + window.scrollY - offset;
         window.scrollTo({ top, behavior: 'instant' });
         return;
     }
 }
 
+/**
+ * Jumps to an absolute global-progress fraction [0, 1].
+ *
+ * @param {number} progress
+ */
 function goToProgress(progress) {
     const total = document.documentElement.scrollHeight - window.innerHeight;
-    const target = progress * total;
-    window.scrollTo({ top: target, behavior: 'instant' });
+    window.scrollTo({ top: progress * total, behavior: 'instant' });
 }
 
-// ─── Private — iframe creation ────────────────────────────────────────────────
+/**
+ * Recalculates iframe heights and restores the saved position after a viewport
+ * resize (e.g. orientation change or font-size adjustment).
+ */
+async function onResize() {
+    if (!chapters.length) return;
 
-// Creates and loads an iframe for a single chapter, waits for images and
-// fonts, then stretches the iframe to its full content height so that the
-// parent window scroll encompasses the entire book in one continuous strip.
-//
-// @param {{ id: string, html: string }} raw  Raw chapter descriptor.
-// @returns {Promise<{ id: string, el: HTMLIFrameElement }>}
+    // Reset every iframe so the browser can recalculate its content height,
+    // and re-inject CSS variables in case viewport dimensions changed.
+    for (const ch of chapters) {
+        ch.el.style.height = 'auto';
+        _setIframeVars(ch.el);
+    }
+
+    // Two frames for reflow + one tick for robustness (mirrors paged reader).
+    await _nextFrame();
+    await _nextFrame();
+    await new Promise(r => setTimeout(r, 50));
+
+    // Stretch each iframe to its new content height.
+    for (const ch of chapters) {
+        const doc = ch.el.contentDocument;
+        if (doc) ch.el.style.height = `${doc.documentElement.scrollHeight}px`;
+    }
+
+    await _nextFrame();
+
+    // Rebuild document-absolute node coordinates after layout has settled.
+    _buildSectionCache();
+
+    if (lastProgress) {
+        const { chapterId, nodeIndex, nodeOffset } = lastProgress;
+        _restoreProgress(chapterId, nodeIndex, nodeOffset);
+    }
+}
+
+// ─── Private — iframe creation ─────────────────────────────────────────────────
+
+/**
+ * Creates and loads an iframe for a single chapter, waits for images and
+ * fonts, then stretches the iframe to its full content height.
+ *
+ * @param {{ id: string, html: string }} raw
+ * @returns {Promise<{ id: string, el: HTMLIFrameElement, nodes: [] }>}
+ */
 async function _createChapter(raw) {
     const iframe = document.createElement('iframe');
     iframe.style.cssText =
@@ -129,26 +199,27 @@ async function _createChapter(raw) {
 
     const doc = iframe.contentDocument;
 
+    _setIframeVars(iframe);
+
     // Block until all images and custom fonts have loaded so that
     // scrollHeight reflects the true laid-out height of the chapter.
     await waitForImagesAndFonts(doc);
     await _nextFrame();
     await _nextFrame();
 
-    // Stretch the iframe to its content — it must never scroll internally.
     iframe.style.height = `${doc.documentElement.scrollHeight}px`;
 
     _attachIframeListeners(iframe, doc);
 
-    return { id: raw.id, el: iframe };
+    return { id: raw.id, el: iframe, nodes: [] };
 }
 
-// Builds the srcdoc string for a chapter iframe.
-// Uses a <base> tag so relative asset URLs (images, fonts) resolve correctly
-// against the epub/ directory on the same origin.
-//
-// @param {{ id: string, html: string }} chapter
-// @returns {string}
+/**
+ * Builds the srcdoc string for a chapter iframe.
+ *
+ * @param {{ id: string, html: string }} chapter
+ * @returns {string}
+ */
 function _buildSrcdoc(chapter) {
     const base    = new URL('epub/', window.location.href).href;
     const content = decodeB64(chapter.html);
@@ -166,27 +237,38 @@ function _buildSrcdoc(chapter) {
 </html>`;
 }
 
-// Registers interaction listeners on an iframe's document.
-// All events are forwarded to the parent window as custom events so that
-// epub_base.js remains the single place that decides how to handle them,
-// mirroring the paged reader's approach.
-//
-// Selection state is tracked locally per iframe: if text is selected when
-// a tap arrives, the tap clears the selection instead of firing epub:tap,
-// preventing accidental navigation dismissals.
+/**
+ * Injects --vw, --vh and --reader-font-size CSS custom properties into the
+ * iframe's root element, mirroring _setIframeSizes() in the paged reader.
+ *
+ * @param {HTMLIFrameElement} iframe
+ */
+function _setIframeVars(iframe) {
+    const root = iframe.contentDocument?.documentElement;
+    if (!root) return;
+    root.style.setProperty('--vw',               `${window.innerWidth}px`);
+    root.style.setProperty('--vh',               `${window.innerHeight}px`);
+    root.style.setProperty('--reader-font-size', `${_currentFontSize}px`);
+}
+
+/**
+ * Registers interaction listeners on an iframe's document and forwards all
+ * events to the parent window as custom events (epub_base.js handles them).
+ *
+ * @param {HTMLIFrameElement} iframe
+ * @param {Document}          doc
+ */
 function _attachIframeListeners(iframe, doc) {
     let hasSelection = false;
 
     doc.addEventListener('selectionchange', () => {
         hasSelection = (doc.getSelection()?.toString().length ?? 0) > 0;
         window.dispatchEvent(new CustomEvent('epub:selection:change', {
-            detail: { hasSelection }
+            detail: { hasSelection },
         }));
     });
 
     doc.addEventListener('click', e => {
-        // A tap while text is selected only clears the selection; it does not
-        // trigger navigation or notify the native layer.
         if (hasSelection) {
             doc.getSelection()?.removeAllRanges();
             return;
@@ -198,133 +280,200 @@ function _attachIframeListeners(iframe, doc) {
         if (link) {
             e.preventDefault();
             window.dispatchEvent(new CustomEvent('epub:link:click', {
-                detail: { href: link.getAttribute('href') }
+                detail: { href: link.getAttribute('href') },
             }));
             return;
         }
 
         if (!isInteractiveElement(target)) {
-            window.dispatchEvent(new CustomEvent('epub:tap', {
-                detail: { target }
-            }));
+            window.dispatchEvent(new CustomEvent('epub:tap'));
         }
     });
+}
+
+// ─── Private — node cache ──────────────────────────────────────────────────────
+
+/**
+ * Populates ch.nodes for every chapter with document-absolute coordinates.
+ *
+ * Must be called after all iframes have been stretched to their content height
+ * (so that getBoundingClientRect() positions are stable).
+ *
+ * Mirrors _buildSectionCache() in the paged reader:
+ *   paged  → coordinates are in page-index space  (startPage, pageCount, endPage)
+ *   scroll → coordinates are in pixel space        (top, height)
+ *
+ * top    = distance from the very top of the document (px)
+ * height = rendered height of the block element (px)
+ */
+function _buildSectionCache() {
+    // scrollY at call time; added to rect.top to get document-absolute coords.
+    const scrollY = window.scrollY;
+
+    for (const ch of chapters) {
+        const section = ch.el.contentDocument?.getElementById(ch.id);
+        if (!section) { ch.nodes = []; continue; }
+
+        // iframeTop: distance of the iframe's top edge from the document top.
+        // Using getBoundingClientRect() + scrollY is reliable even when the
+        // page is partially scrolled at measurement time.
+        const iframeTop = ch.el.getBoundingClientRect().top + scrollY;
+
+        ch.nodes = [...section.querySelectorAll(BLOCK_SELECTOR)].map(node => {
+            const rect = node.getBoundingClientRect();
+            return {
+                el:     node,
+                top:    iframeTop + rect.top,   // document-absolute top (px)
+                height: Math.max(1, rect.height),
+            };
+        });
+    }
 }
 
 // ─── Private — progress ───────────────────────────────────────────────────────
 
-// Reads the current viewport position and reports it to the native layer.
-// Called on every debounced scroll event.
+/**
+ * Reads the current scroll position and reports progress to the native layer.
+ *
+ * Uses the cached ch.nodes to locate the first block node whose vertical span
+ * contains the current viewport top (window.scrollY).
+ *
+ * Binary search mirrors _emitProgress() in the paged reader:
+ *   paged  → finds the node where startPage ≤ currentPage ≤ endPage
+ *   scroll → finds the node where top ≤ scrollY < top + height
+ *
+ * nodeOffset = (scrollY − nodeTop) / nodeHeight
+ *   0       → viewport top is at or above node top
+ *   ~1      → viewport top is near node bottom (node almost fully scrolled past)
+ */
 function _emitProgress() {
-    if (!currentChapterId) return;
-    const chapter = chapters.find(c => c.id === currentChapterId);
-    if (!chapter) return;
+    const scrollY = window.scrollY;
 
-    const { nodeIndex, nodeOffset } = _getVisibleNodeData(chapter);
+    let anchorChapterId = chapters[0]?.id ?? null;
+    let anchorNodeIndex = 0;
 
+    for (const ch of chapters) {
+        const nodes = ch.nodes;
+        if (!nodes.length) continue;
+
+        const lastNode = nodes[nodes.length - 1];
+
+        // Chapter is entirely above the viewport — remember it as fallback anchor.
+        if (lastNode.top + lastNode.height < scrollY) {
+            anchorChapterId = ch.id;
+            anchorNodeIndex = nodes.length - 1;
+            continue;
+        }
+
+        // Chapter starts below the viewport — stop searching.
+        if (nodes[0].top > scrollY + window.innerHeight) break;
+
+        // Binary search: largest nodeIndex whose top ≤ scrollY.
+        let lo = 0, hi = nodes.length - 1, found = 0;
+        while (lo <= hi) {
+            const mid = (lo + hi) >> 1;
+            if (nodes[mid].top <= scrollY) { found = mid; lo = mid + 1; }
+            else hi = mid - 1;
+        }
+
+        const { top, height } = nodes[found];
+
+        // Node spans the viewport top → this is the progress anchor.
+        if (scrollY < top + height) {
+            const offset = Math.min(0.999999,
+                Math.max(0, (scrollY - top) / height));
+            lastProgress = { chapterId: ch.id, nodeIndex: found, nodeOffset: offset };
+            _reportProgress(ch.id, found, offset);
+            return;
+        }
+
+        // scrollY is in a gap between this node and the next.
+        anchorChapterId = ch.id;
+        anchorNodeIndex = found;
+    }
+
+    // Fallback: use the last node that was above the viewport.
+    if (anchorChapterId) {
+        const ch   = chapters.find(c => c.id === anchorChapterId);
+        const node = ch?.nodes[anchorNodeIndex];
+        if (node) {
+            const offset = Math.min(0.999999,
+                Math.max(0, (scrollY - node.top) / node.height));
+            lastProgress = { chapterId: anchorChapterId, nodeIndex: anchorNodeIndex, nodeOffset: offset };
+            _reportProgress(anchorChapterId, anchorNodeIndex, offset);
+        }
+    }
+}
+
+/**
+ * Serialises progress and forwards it to the bridge.
+ * Mirrors _reportProgress() in the paged reader.
+ *
+ * @param {string} chapterId
+ * @param {number} nodeIndex
+ * @param {number} nodeOffset  Fraction [0, 1) of the node scrolled above the viewport top.
+ */
+function _reportProgress(chapterId, nodeIndex, nodeOffset) {
     bridge.onProgressChanged(
         _getGlobalProgress(),
-        currentChapterId,
-        JSON.stringify({ chapterId: currentChapterId, nodeIndex, nodeOffset })
+        chapterId,
+        JSON.stringify({ chapterId, nodeIndex, nodeOffset }),
     );
 }
 
-// Finds the first visible block node in the chapter and calculates how far
-// into that node the viewport has scrolled.
-//
-// Node positions are read from the iframe's own getBoundingClientRect() and
-// then offset by the iframe's position in the parent document, so that all
-// coordinates are in the parent's viewport space.
-//
-// Returns:
-//   nodeIndex  — index within the BLOCK_SELECTOR node list
-//   nodeOffset — fraction of the node's height scrolled past the viewport top
-//                (0 = node top visible, 1 = node bottom visible)
-function _getVisibleNodeData(chapter) {
-    const doc     = chapter.el.contentDocument;
-    const section = doc.getElementById(chapter.id);
-    if (!section) return { nodeIndex: 0, nodeOffset: 0 };
-
-    const nodes     = [...section.querySelectorAll(BLOCK_SELECTOR)];
-    // iframeTop translates iframe-relative rects into parent-viewport space.
-    const iframeTop = chapter.el.getBoundingClientRect().top;
-
-    let bestIndex = 0;
-    for (let i = 0; i < nodes.length; i++) {
-        const rect      = nodes[i].getBoundingClientRect();
-        const absTop    = iframeTop + rect.top;
-        const absBottom = iframeTop + rect.bottom;
-        if (absBottom > 0 && absTop < window.innerHeight) {
-            bestIndex = i;
-            break;
-        }
-    }
-
-    const best = nodes[bestIndex];
-    let nodeOffset = 0;
-
-    if (best) {
-        const rect          = best.getBoundingClientRect();
-        const absTop        = iframeTop + rect.top;
-        const lineHeight    = _getEffectiveLineHeight(best);
-        const linesTotal    = rect.height / lineHeight;
-        const linesScrolled = -absTop / lineHeight;
-        nodeOffset = parseFloat(
-            Math.max(0, Math.min(1, linesScrolled / linesTotal)).toFixed(4)
-        );
-    }
-
-    return { nodeIndex: bestIndex, nodeOffset };
-}
-
-// Scrolls the viewport to the position described by the saved progress object.
-// This is the inverse of _getVisibleNodeData(): given a nodeIndex and a 0–1
-// offset within that node, compute the absolute scroll position and jump to it.
-//
-// Node positions are obtained from the iframe's document and then translated
-// into parent-document coordinates by adding the iframe's offsetTop.
+/**
+ * Scrolls the viewport to the position described by a saved progress object.
+ * Inverse of _emitProgress():
+ *
+ *   save:    nodeOffset = (scrollY    − nodeTop) / nodeHeight
+ *   restore: scrollY    =  nodeOffset * nodeHeight + nodeTop
+ *
+ * Mirrors _restoreProgress() in the paged reader.
+ *
+ * @param {string} chapterId
+ * @param {number} nodeIndex
+ * @param {number} [nodeOffset=0]
+ */
 function _restoreProgress(chapterId, nodeIndex, nodeOffset = 0) {
-    // Lock the observer so it cannot overwrite currentChapterId while we scroll.
+    // Lock the observer so it cannot overwrite currentChapterId mid-scroll.
     scrollLocked     = true;
     currentChapterId = chapterId;
 
-    const chapter = chapters.find(c => c.id === chapterId);
-    if (!chapter) { scrollLocked = false; return; }
+    const ch = chapters.find(c => c.id === chapterId);
+    if (!ch) { scrollLocked = false; return; }
 
-    const doc     = chapter.el.contentDocument;
-    const section = doc.getElementById(chapterId);
-    if (!section)  { scrollLocked = false; return; }
+    const target = ch.nodes[nodeIndex];
+    if (!target) {
+        // Fallback: jump to the last node of the chapter, or to its top.
+        const lastNode = ch.nodes[ch.nodes.length - 1];
+        window.scrollTo({
+            top:      lastNode ? lastNode.top : ch.el.offsetTop,
+            behavior: 'instant',
+        });
+        scrollLocked = false;
+        return;
+    }
 
-    const nodes  = [...section.querySelectorAll(BLOCK_SELECTOR)];
-    const target = nodes[nodeIndex];
-    if (!target)   { scrollLocked = false; return; }
-
-    const rect       = target.getBoundingClientRect();
-    const lineHeight = _getEffectiveLineHeight(target);
-    const linesTotal = rect.height / lineHeight;
-
-    // Inverse of the save formula:
-    //   saved:    nodeOffset  = linesScrolled / linesTotal
-    //   restore:  scrollTop   = iframeOffsetTop + nodeTop + nodeOffset * linesTotal * lineHeight
-    const top = chapter.el.offsetTop + rect.top + nodeOffset * linesTotal * lineHeight;
-    window.scrollTo({ top, behavior: 'instant' });
+    window.scrollTo({
+        top:      target.top + nodeOffset * target.height,
+        behavior: 'instant',
+    });
 
     requestAnimationFrame(() => {
-        // Unlock after the scroll has settled and the observer has had one
-        // opportunity to fire at the correct position.
         scrollLocked = false;
-        _emitProgress();
+        // Report using the original node identity, not whatever node _emitProgress
+        // would derive from scrollY after the layout change. This prevents
+        // accumulated drift across successive resizes.
+        _reportProgress(chapterId, nodeIndex, nodeOffset);
     });
 }
 
-// ─── Private — observers and scroll ──────────────────────────────────────────
+// ─── Private — observers and scroll ───────────────────────────────────────────
 
-// Watches all chapter iframes and keeps currentChapterId pointing to whichever
-// chapter is first (topmost) among those currently visible in the viewport.
-//
-// The IntersectionObserver targets the iframe elements directly. A data
-// attribute carries the chapter ID so the callback can identify each entry
-// without a reverse DOM lookup.
+/**
+ * Watches all chapter iframes and keeps currentChapterId pointing to whichever
+ * chapter is topmost among those currently visible in the viewport.
+ */
 function _setupChapterObserver() {
     const ratios   = new Map();
     const orderMap = new Map(chapters.map((c, i) => [c.id, i]));
@@ -336,8 +485,6 @@ function _setupChapterObserver() {
             .filter(([, r]) => r > 0)
             .sort(([a], [b]) => (orderMap.get(a) ?? 0) - (orderMap.get(b) ?? 0))[0];
 
-        // Ignore observer callbacks while a programmatic scroll is in progress
-        // (see scrollLocked and _restoreProgress).
         if (firstVisible && !scrollLocked) {
             currentChapterId = firstVisible[0];
         }
@@ -349,56 +496,32 @@ function _setupChapterObserver() {
     });
 }
 
-// Attaches the scroll listener. The 300 ms debounce avoids flooding the bridge
-// while the user is actively scrolling, without introducing a noticeable delay
-// in the progress update once they stop.
-// { passive: true } tells the browser we will never call preventDefault(),
-// allowing it to optimise scroll performance on the compositor thread.
+/**
+ * Attaches the debounced scroll listener.
+ * { passive: true } lets the browser optimise scroll on the compositor thread.
+ */
 function _setupScrollTracking() {
     const emitDebounced = debounce(_emitProgress, 300);
-    window.addEventListener('scroll', emitDebounced, { passive: true });
+    window.addEventListener('scroll', () => {
+        if (!scrollLocked) emitDebounced();
+    }, { passive: true });
 }
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
-// Returns true when the user has scrolled to within 1px of the document end.
-// Used to guarantee that the last paragraph always registers as fully read,
-// regardless of sub-pixel rounding in scrollHeight.
-function _isAtBottom() {
-    const total = document.documentElement.scrollHeight - window.innerHeight;
-    return window.scrollY >= total - 1;
-}
-
-// Returns a 0–1 value representing how far through the whole book the user
-// has scrolled, used to drive a global progress indicator in the native UI.
+/**
+ * Returns a 0–1 value representing how far through the whole book the user
+ * has scrolled, used to drive a global progress indicator in the native UI.
+ *
+ * @returns {number}
+ */
 function _getGlobalProgress() {
     const total = document.documentElement.scrollHeight - window.innerHeight;
     if (total <= 0) return 0;
-    return _isAtBottom() ? 1 : Math.min(1, window.scrollY / total);
+    return window.scrollY >= total - 1 ? 1 : Math.min(1, window.scrollY / total);
 }
 
-// Returns the effective line height of a node in CSS pixels.
-//
-// Why not just use fontSize?
-//   epub stylesheets commonly set line-height to values like 1.5 or 24px.
-//   Using fontSize as a proxy produces wrong line counts, which makes the
-//   saved nodeOffset drift from the true reading position on restore.
-//
-// Why the "normal" fallback?
-//   getComputedStyle().lineHeight returns the string "normal" when no explicit
-//   value is set. The CSS spec defines "normal" as roughly 1.2× the font size,
-//   so we apply that multiplier instead of parsing a number we cannot get.
-function _getEffectiveLineHeight(node) {
-    const style = getComputedStyle(node);
-    const raw   = style.lineHeight;
-    if (raw && raw !== 'normal') {
-        const parsed = parseFloat(raw);
-        if (!isNaN(parsed) && parsed > 0) return parsed;
-    }
-    return (parseFloat(style.fontSize) || 16) * 1.2;
-}
-
-// Resolves on the next animation frame.
+/** Resolves on the next animation frame. */
 function _nextFrame() {
     return new Promise(resolve => requestAnimationFrame(resolve));
 }
