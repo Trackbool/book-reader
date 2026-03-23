@@ -95,7 +95,7 @@ async function loadContent(chaptersJson, progressJson = '', readerSettings = "")
         const { chapterId, nodeIndex, nodeOffset = 0 } = JSON.parse(progressJson);
         _restoreProgress(chapterId, nodeIndex, nodeOffset);
     } else {
-        goToPage(0, true, false);
+        goToPage(/* page */ 0, /* animate */ false, /* emitProgress */ true, /* forceEmit */ true);
     }
 
     _contentReady = true;
@@ -109,11 +109,14 @@ async function loadContent(chaptersJson, progressJson = '', readerSettings = "")
 /**
  * Slides the container to reveal the given page and notifies the bridge.
  *
- * @param {number}  page       Target page index (clamped to [0, totalPages − 1]).
- * @param {boolean} forceEmit  Emit progress even when the page has not changed.
- * @param {boolean} animate    Apply a CSS transition (skipped for jumps > 2 pages).
+ * @param {number}  page          Target page index (clamped to [0, totalPages − 1]).
+ * @param {boolean} animate       Apply a CSS transition (skipped for jumps > 2 pages).
+ * @param {boolean} emitProgress  Whether to emit progress at all. Pass false when
+ *                                repositioning programmatically (restore, resize) to
+ *                                avoid overwriting lastProgress with stale geometry.
+ * @param {boolean} forceEmit     Emit progress even when the page has not changed.
  */
-function goToPage(page, forceEmit = false, animate = true) {
+function goToPage(page, animate = true, emitProgress = true, forceEmit = false) {
     if (totalPages === 0) return;
 
     const newPage   = Math.max(0, Math.min(page, totalPages - 1));
@@ -127,8 +130,8 @@ function goToPage(page, forceEmit = false, animate = true) {
 
     if (changed) {
         bridge.onPageChanged(currentPage + 1, totalPages);
-        _emitProgress();
-    } else if (forceEmit) {
+        if (emitProgress) _emitProgress();
+    } else if (forceEmit && emitProgress) {
         _emitProgress();
     }
 }
@@ -143,7 +146,7 @@ function navigateToId(id) {
     for (const ch of chapters) {
         const el = ch.el.contentDocument?.getElementById(id);
         if (!el) continue;
-        goToPage(ch.startPage + _getNodeLocalPage(el, ch));
+        goToPage(/* page */ ch.startPage + _getNodeLocalPage(el, ch), /* animate */ true, /* emitProgress */ true);
         return;
     }
 }
@@ -190,7 +193,7 @@ async function onResize() {
         const { chapterId, nodeIndex, nodeOffset } = lastProgress;
         _restoreProgress(chapterId, nodeIndex, nodeOffset);
     } else {
-        goToPage(Math.min(currentPage, totalPages - 1));
+        goToPage(/* page */ Math.min(currentPage, totalPages - 1), /* animate */ false, /* emitProgress */ true);
     }
 }
 
@@ -438,6 +441,7 @@ function _emitProgress() {
         if (currentPage <= endPage) {
             const offset = Math.min(0.999999,
                 Math.max(0, (currentPage - startPage) / pageCount));
+            lastProgress = { chapterId: ch.id, nodeIndex: found, nodeOffset: offset };
             _reportProgress(ch.id, found, offset);
             return;
         }
@@ -447,13 +451,11 @@ function _emitProgress() {
     }
 
     if (anchorChapterId) {
-        const ch   = chapters.find(c => c.id === anchorChapterId);
-        const node = ch.nodes[anchorNodeIndex];
-        _reportProgress(
-            anchorChapterId,
-            anchorNodeIndex,
-            (currentPage - node.startPage) / node.pageCount,
-        );
+        const ch     = chapters.find(c => c.id === anchorChapterId);
+        const node   = ch.nodes[anchorNodeIndex];
+        const offset = (currentPage - node.startPage) / node.pageCount;
+        lastProgress = { chapterId: anchorChapterId, nodeIndex: anchorNodeIndex, nodeOffset: offset };
+        _reportProgress(anchorChapterId, anchorNodeIndex, offset);
     }
 }
 
@@ -469,13 +471,14 @@ function _reportProgress(chapterId, nodeIndex, nodeOffset) {
         ? currentPage / (totalPages - 1)
         : (currentPage > 0 ? 1 : 0);
 
-    lastProgress = { chapterId, nodeIndex, nodeOffset };
     bridge.onProgressChanged(globalProgress, chapterId,
         JSON.stringify({ chapterId, nodeIndex, nodeOffset }));
 }
 
 /**
  * Navigates to the page corresponding to a previously saved progress object.
+ * Passes emitProgress = false to goToPage to avoid overwriting lastProgress
+ * with stale geometry mid-resize; emits once at the end with stable geometry.
  *
  * @param {string} chapterId
  * @param {number} nodeIndex
@@ -483,12 +486,12 @@ function _reportProgress(chapterId, nodeIndex, nodeOffset) {
  */
 function _restoreProgress(chapterId, nodeIndex, nodeOffset = 0) {
     const ch = chapters.find(c => c.id === chapterId);
-    if (!ch) { goToPage(0); return; }
+    if (!ch) { goToPage(/* page */ 0, /* animate */ false, /* emitProgress */ false); return; }
 
     const target = ch.nodes[nodeIndex];
     if (!target) {
         const lastNode = ch.nodes[ch.nodes.length - 1];
-        if (lastNode) goToPage(lastNode.startPage);
+        if (lastNode) goToPage(/* page */ lastNode.startPage, /* animate */ false, /* emitProgress */ false);
         else          navigateToId(chapterId);
         return;
     }
@@ -496,8 +499,13 @@ function _restoreProgress(chapterId, nodeIndex, nodeOffset = 0) {
     const pageWithinNode = Math.max(0,
         Math.floor(nodeOffset * target.pageCount + 1e-9));
 
-    goToPage(Math.min(target.startPage + pageWithinNode, totalPages - 1),
-        true, false);
+    goToPage(/* page */ Math.min(target.startPage + pageWithinNode, totalPages - 1),
+        /* animate */ false, /* emitProgress */ false);
+
+    // Report using the original node identity, not whatever node _emitProgress
+    // would derive from currentPage after the layout change. This prevents
+    // accumulated drift across successive resizes.
+    _reportProgress(chapterId, nodeIndex, nodeOffset);
 }
 
 /**
